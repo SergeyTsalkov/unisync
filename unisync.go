@@ -1,33 +1,41 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
+
+	"unisync/filelist"
 )
 
 func main() {
-	reader := bufio.NewReader(os.Stdin)
-	line, _ := reader.ReadString('\n')
+	// reader := bufio.NewReader(os.Stdin)
+	// line, _ := reader.ReadString('\n')
 
-	fmt.Printf("%#v", line)
-	handle(line)
-}
+	// fmt.Printf("%#v", line)
+	// handle(line)
 
-func handle(line string) {
-	words := strings.Fields(line)
-	cmd := strings.ToUpper(words[0])
+	list, err := filelist.Make("/Users/sergey/unisync")
+	fmt.Println(err)
 
-	switch cmd {
-	case "REQFILELIST":
-		return handleREQFILELIST()
+	if err == nil {
+		for _, file := range list {
+			fmt.Printf("%+v\n", file)
+		}
 	}
 
-	fmt.Printf("%#v", cmd)
 }
 
-func handleREQFILELIST() {
-	files, _ := os.ReadDir(".")
+// func handle(line string) {
+// 	words := strings.Fields(line)
+// 	cmd := strings.ToUpper(words[0])
 
-}
+// 	switch cmd {
+// 	case "REQFILELIST":
+// 		return handleREQFILELIST()
+// 	}
+
+// 	fmt.Printf("%#v", cmd)
+// }
+
+// func handleREQFILELIST() error {
+
+// }
