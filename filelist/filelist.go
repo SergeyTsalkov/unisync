@@ -2,7 +2,7 @@ package filelist
 
 import (
 	"encoding/json"
-	"os"
+	"io/fs"
 	"path/filepath"
 )
 
@@ -16,40 +16,32 @@ type FileListItem struct {
 type FileList []FileListItem
 
 func Make(basepath string) (FileList, error) {
-	list := make(FileList, 0)
+	list := FileList{}
 	basepath = filepath.Clean(basepath)
 
-	for dirs := []string{basepath}; len(dirs) > 0; {
-		dir := dirs[0]
-		dirs = dirs[1:]
-
-		files, err := os.ReadDir(dir)
+	err := filepath.Walk(basepath, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
-			continue
+			return err
 		}
 
-		for _, file := range files {
-			path := filepath.Join(dir, file.Name())
-			relpath, _ := filepath.Rel(basepath, path)
-			if relpath == "" {
-				continue
-			}
-
-			item := FileListItem{}
-			item.Path = relpath
-			item.IsDir = file.IsDir()
-
-			if item.IsDir {
-				dirs = append(dirs, path)
-			}
-
-			if info, err := file.Info(); err == nil {
-				item.Size = info.Size()
-				item.ModifiedAt = info.ModTime().Unix()
-			}
-
-			list = append(list, item)
+		relpath, _ := filepath.Rel(basepath, path)
+		if relpath == "." {
+			return nil
 		}
+
+		item := FileListItem{
+			Path:       relpath,
+			IsDir:      info.IsDir(),
+			Size:       info.Size(),
+			ModifiedAt: info.ModTime().Unix(),
+		}
+
+		list = append(list, item)
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
 	return list, nil
