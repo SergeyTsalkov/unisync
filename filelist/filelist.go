@@ -1,16 +1,16 @@
 package filelist
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 type FileListItem struct {
-	Path       string
-	Size       int64
-	IsDir      bool
-	ModifiedAt time.Time
+	Path       string `json:"path"`
+	Size       int64  `json:"size"`
+	IsDir      bool   `json:"is_dir"`
+	ModifiedAt int64  `json:"modified_at"`
 }
 
 type FileList []FileListItem
@@ -45,7 +45,7 @@ func Make(basepath string) (FileList, error) {
 
 			if info, err := file.Info(); err == nil {
 				item.Size = info.Size()
-				item.ModifiedAt = info.ModTime()
+				item.ModifiedAt = info.ModTime().Unix()
 			}
 
 			list = append(list, item)
@@ -53,4 +53,9 @@ func Make(basepath string) (FileList, error) {
 	}
 
 	return list, nil
+}
+
+func (list FileList) Encode() []byte {
+	output, _ := json.MarshalIndent(list, "", "  ")
+	return output
 }
