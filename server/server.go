@@ -7,10 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-
-	"unisync/filelist"
+	"unisync/commands"
 )
 
 type Server struct {
@@ -47,6 +45,9 @@ func (server *Server) Run() error {
 			return err
 		}
 		line = strings.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
 
 		err = server.handle(line)
 		if err != nil {
@@ -62,7 +63,7 @@ func (server *Server) Run() error {
 func (server *Server) handle(line string) error {
 	words := strings.Fields(line)
 	cmd := strings.ToUpper(words[0])
-	args := words[1:]
+	json := strings.TrimPrefix(line, cmd)
 
 	if cmd != "HELLO" && server.version == 0 {
 		return fmt.Errorf("must log in with HELLO first")
@@ -70,9 +71,11 @@ func (server *Server) handle(line string) error {
 
 	switch cmd {
 	case "HELLO":
-		return server.handleHELLO(args)
+		return server.handleHELLO(json)
 	case "REQINFO":
-		return server.handleREQINFO(args)
+		//return server.handleREQINFO(args)
+	case "PULL":
+		//return server.handlePULL(args)
 	default:
 		return fmt.Errorf("invalid command")
 	}
@@ -80,12 +83,13 @@ func (server *Server) handle(line string) error {
 	return nil
 }
 
-func (server *Server) handleHELLO(args []string) error {
-	if len(args) < 2 {
-		return fmt.Errorf("HELLO must have 2 arguments")
+func (server *Server) handleHELLO(json string) error {
+	args, err := commands.ParseHelloCommand(json)
+	if err != nil {
+		return err
 	}
 
-	basepath := strings.Join(args[1:], "")
+	basepath := args.Basepath
 	basepath = filepath.Clean(basepath)
 
 	if !filepath.IsAbs(basepath) {
@@ -99,34 +103,38 @@ func (server *Server) handleHELLO(args []string) error {
 		return fmt.Errorf("path is not a directory")
 	}
 
-	server.version, _ = strconv.Atoi(args[0])
+	server.version = 1
 	server.basepath = basepath
 	fmt.Fprintf(server.out, "OK\n")
 	return nil
 }
 
-func (server *Server) handleREQINFO(args []string) error {
-	path := ""
-	if len(args) > 0 {
-		path = args[0]
-	}
-	list, err := filelist.Make(server.mkPath(path))
+// func (server *Server) handleREQINFO(args []string) error {
+// 	path := ""
+// 	if len(args) > 0 {
+// 		path = args[0]
+// 	}
+// 	list, err := filelist.Make(server.mkPath(path))
 
-	if err != nil {
-		return err
-	}
+// 	if err != nil {
+// 		return err
+// 	}
 
-	json := list.Encode()
+// 	json := list.Encode()
 
-	_, err = fmt.Fprintf(server.out, "RESINFO %v\n", len(json))
-	if err != nil {
-		return &DeepError{err}
-	}
+// 	_, err = fmt.Fprintf(server.out, "RESINFO %v\n", len(json))
+// 	if err != nil {
+// 		return &DeepError{err}
+// 	}
 
-	_, err = server.out.Write(json)
-	if err != nil {
-		return &DeepError{err}
-	}
+// 	_, err = server.out.Write(json)
+// 	if err != nil {
+// 		return &DeepError{err}
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
+
+// func (server *Server) handlePULL(args []string) error {
+
+// }
