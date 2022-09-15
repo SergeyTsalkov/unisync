@@ -1,1 +1,11 @@
 HELLO {"basepath":"/Users/sergey/test"}
+PULL {"paths":["a.txt","b.txt"]}
+REQLIST
+REQLIST {"path":"subdir"}
+
+PULL {"paths":["filename","filename2",...]}
+  ERR {"path":"filename","error":"blah blah"}
+
+  PUSH {"path":"filename2","data":10,"more":true}
+  [10 bytes of data]
+  PUSH 
