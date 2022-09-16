@@ -1,4 +1,4 @@
-package server
+package node
 
 type DeepError struct {
 	Err error

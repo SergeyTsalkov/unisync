@@ -1,4 +1,4 @@
-package server
+package node
 
 import (
 	"bufio"
@@ -14,7 +14,7 @@ import (
 	jsonC "encoding/json"
 )
 
-type Server struct {
+type Node struct {
 	version    int
 	in         io.Reader
 	out        io.Writer
@@ -22,15 +22,15 @@ type Server struct {
 	buffersize int
 }
 
-func New(in io.Reader, out io.Writer) *Server {
-	return &Server{
+func New(in io.Reader, out io.Writer) *Node {
+	return &Node{
 		in:         in,
 		out:        out,
 		buffersize: 1000000,
 	}
 }
 
-func (server *Server) mkPath(path string) string {
+func (server *Node) mkPath(path string) string {
 	if server.basepath == "" {
 		return ""
 	}
@@ -40,7 +40,7 @@ func (server *Server) mkPath(path string) string {
 	return path
 }
 
-func (server *Server) Run() error {
+func (server *Node) Run() error {
 	reader := bufio.NewReader(server.in)
 	var deepError *DeepError
 
@@ -65,7 +65,7 @@ func (server *Server) Run() error {
 	}
 }
 
-func (server *Server) handle(line string) error {
+func (server *Node) handle(line string) error {
 	words := strings.Fields(line)
 	cmd := strings.ToUpper(words[0])
 	json := strings.TrimSpace(strings.TrimPrefix(line, cmd))
@@ -88,7 +88,7 @@ func (server *Server) handle(line string) error {
 	return nil
 }
 
-func (server *Server) handleHELLO(json string) error {
+func (server *Node) handleHELLO(json string) error {
 	args := &commands.HelloCommand{}
 	err := commands.ParseCommand(json, args)
 	if err != nil {
@@ -115,7 +115,7 @@ func (server *Server) handleHELLO(json string) error {
 	return nil
 }
 
-func (server *Server) handleREQLIST(json string) error {
+func (server *Node) handleREQLIST(json string) error {
 	args := &commands.ReqListCommand{}
 	err := commands.ParseCommand(json, args)
 	if err != nil {
@@ -143,7 +143,7 @@ func (server *Server) handleREQLIST(json string) error {
 	return nil
 }
 
-func (server *Server) handlePULL(json string) error {
+func (server *Node) handlePULL(json string) error {
 	args := &commands.PullCommand{}
 	err := commands.ParseCommand(json, args)
 	if err != nil {
@@ -161,7 +161,7 @@ func (server *Server) handlePULL(json string) error {
 	return nil
 }
 
-func (server *Server) pushFile(path string) error {
+func (server *Node) pushFile(path string) error {
 	filename := server.mkPath(path)
 	info, err := os.Lstat(filename)
 	if err != nil {
