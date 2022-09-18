@@ -5,10 +5,6 @@ import (
 	"fmt"
 )
 
-type HelloCommand struct {
-	Basepath string `json:"basepath"`
-}
-
 type ReqListCommand struct {
 	Path string `json:"path"`
 }
@@ -27,6 +23,10 @@ type PushCommand struct {
 
 type CommandType interface {
 	HelloCommand | ReqListCommand | PullCommand | PushCommand
+}
+
+type Command interface {
+	Encode() string
 }
 
 func ParseCommand[T CommandType](str string, ptr *T) error {

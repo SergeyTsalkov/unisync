@@ -1,5 +1,6 @@
 HELLO {"basepath":"/Users/sergey/test"}
-PULL {"paths":["a.txt","b.txt"]}
+PULL {"paths":["a.txt"]}
+
 REQLIST
 REQLIST {"path":"subdir"}
 
@@ -9,3 +10,7 @@ PULL {"paths":["filename","filename2",...]}
   PUSH {"path":"filename2","data":10,"more":true}
   [10 bytes of data]
   PUSH 
+
+
+
+rsync --archive --delete --exclude='.git' --exclude='unisync' /Users/sergey/unisync/ sergey@51.79.19.179:unisync

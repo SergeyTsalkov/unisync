@@ -4,7 +4,8 @@ import (
 	"flag"
 	"log"
 	"os"
-	"unisync/node"
+	"unisync/client"
+	"unisync/server"
 	"unisync/sshclient"
 )
 
@@ -14,7 +15,7 @@ func main() {
 	flag.Parse()
 
 	if *stdServerFlag {
-		s := node.New(os.Stdin, os.Stdout)
+		s := server.New(os.Stdin, os.Stdout)
 		err := s.Run()
 		if err != nil {
 			log.Fatalln(err)
@@ -22,13 +23,20 @@ func main() {
 
 	} else if *sshClientFlag {
 
-		c := sshclient.New()
-		err := c.Run()
+		sshc := sshclient.New()
+		err := sshc.Run()
 		if err != nil {
 			log.Fatalln(err)
 		}
 
-		select {} // wait forever
+		c := client.New(sshc.Out, sshc.In)
+		c.LocalPath = "/Users/sergey/test"
+		c.RemotePath = "/home/sergey/test"
+
+		err = c.RunHello()
+		if err != nil {
+			log.Fatalln(err)
+		}
 
 	} else {
 		flag.PrintDefaults()
