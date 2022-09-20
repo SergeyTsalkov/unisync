@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"unisync/client"
@@ -37,6 +38,13 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
+
+		list, err := c.RunReqList()
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		fmt.Println(list)
 
 	} else {
 		flag.PrintDefaults()

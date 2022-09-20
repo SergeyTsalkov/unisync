@@ -89,7 +89,7 @@ func (server *Server) handle(line string) error {
 }
 
 func (server *Server) handleHELLO(json string) error {
-	args := &commands.HelloCommand{}
+	args := &commands.Hello{}
 	err := commands.ParseCommand(json, args)
 	if err != nil {
 		return err
@@ -116,7 +116,7 @@ func (server *Server) handleHELLO(json string) error {
 }
 
 func (server *Server) handleREQLIST(json string) error {
-	args := &commands.ReqListCommand{}
+	args := &commands.ReqList{}
 	err := commands.ParseCommand(json, args)
 	if err != nil {
 		return err
@@ -129,8 +129,9 @@ func (server *Server) handleREQLIST(json string) error {
 	}
 
 	output := list.Encode()
+	reply := &commands.ResList{int64(len(output))}
 
-	_, err = fmt.Fprintf(server.out, "RESLIST %v\n", len(output))
+	_, err = io.WriteString(server.out, reply.Encode())
 	if err != nil {
 		return &DeepError{err}
 	}
@@ -144,7 +145,7 @@ func (server *Server) handleREQLIST(json string) error {
 }
 
 func (server *Server) handlePULL(json string) error {
-	args := &commands.PullCommand{}
+	args := &commands.Pull{}
 	err := commands.ParseCommand(json, args)
 	if err != nil {
 		return err
@@ -185,7 +186,7 @@ func (server *Server) pushFile(path string) error {
 			more = false
 		}
 
-		push := &commands.PushCommand{
+		push := &commands.Push{
 			Path:       path,
 			Length:     int64(n),
 			IsDir:      info.IsDir(),

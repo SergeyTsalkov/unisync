@@ -6,15 +6,15 @@ import (
 	"log"
 )
 
-type Hello struct {
-	Basepath string `json:"basepath"`
+type ReqList struct {
+	Path string `json:"path"`
 }
 
-func (c *Hello) Type() string {
-	return "HELLO"
+func (c *ReqList) Type() string {
+	return "REQLIST"
 }
 
-func (c *Hello) Encode() string {
+func (c *ReqList) Encode() string {
 	bytes, err := json.Marshal(c)
 	if err != nil {
 		log.Fatalln(err)

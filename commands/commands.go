@@ -5,15 +5,11 @@ import (
 	"fmt"
 )
 
-type ReqListCommand struct {
-	Path string `json:"path"`
-}
-
-type PullCommand struct {
+type Pull struct {
 	Paths []string `json:"paths"`
 }
 
-type PushCommand struct {
+type Push struct {
 	Path       string `json:"path"`
 	IsDir      bool   `json:"is_dir"`
 	ModifiedAt int64  `json:"modified_at"`
@@ -22,11 +18,12 @@ type PushCommand struct {
 }
 
 type CommandType interface {
-	HelloCommand | ReqListCommand | PullCommand | PushCommand
+	Hello | ReqList | ResList | Pull | Push
 }
 
 type Command interface {
 	Encode() string
+	Type() string
 }
 
 func ParseCommand[T CommandType](str string, ptr *T) error {
