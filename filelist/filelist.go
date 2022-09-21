@@ -14,7 +14,7 @@ type FileListItem struct {
 	ModifiedAt int64  `json:"modified_at"`
 }
 
-type FileList []FileListItem
+type FileList []*FileListItem
 
 func Make(basepath string) (FileList, error) {
 	list := FileList{}
@@ -30,7 +30,7 @@ func Make(basepath string) (FileList, error) {
 			return nil
 		}
 
-		item := FileListItem{
+		item := &FileListItem{
 			Path:       relpath,
 			IsDir:      info.IsDir(),
 			Size:       info.Size(),
@@ -53,10 +53,10 @@ func (list FileList) Encode() []byte {
 	return output
 }
 
-func Parse(bytes []byte) (*FileList, error) {
-	list := &FileList{}
+func Parse(bytes []byte) (FileList, error) {
+	list := FileList{}
 
-	err := json.Unmarshal(bytes, list)
+	err := json.Unmarshal(bytes, &list)
 	if err != nil {
 		return nil, fmt.Errorf("invalid json: %w", err)
 	}

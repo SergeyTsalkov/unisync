@@ -38,7 +38,7 @@ func (c *Client) RunHello() error {
 	return err
 }
 
-func (c *Client) RunReqList() (*filelist.FileList, error) {
+func (c *Client) RunReqList() (filelist.FileList, error) {
 	cmd := &commands.ReqList{}
 	err := c.Send(cmd)
 	if err != nil {

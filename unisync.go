@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"os"
 	"unisync/client"
+	"unisync/filelist"
 	"unisync/server"
 	"unisync/sshclient"
 )
@@ -16,38 +16,54 @@ func main() {
 	flag.Parse()
 
 	if *stdServerFlag {
-		s := server.New(os.Stdin, os.Stdout)
-		err := s.Run()
-		if err != nil {
-			log.Fatalln(err)
-		}
+		runServer()
 
 	} else if *sshClientFlag {
-
-		sshc := sshclient.New()
-		err := sshc.Run()
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		c := client.New(sshc.Out, sshc.In)
-		c.LocalPath = "/Users/sergey/test"
-		c.RemotePath = "/home/sergey/test"
-
-		err = c.RunHello()
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		list, err := c.RunReqList()
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		fmt.Println(list)
+		runClient()
 
 	} else {
 		flag.PrintDefaults()
 	}
+
+}
+
+func runServer() {
+	s := server.New(os.Stdin, os.Stdout)
+	err := s.Run()
+	if err != nil {
+		log.Fatalln(err)
+	}
+}
+
+func runClient() {
+	sshc := sshclient.New()
+	err := sshc.Run()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	c := client.New(sshc.Out, sshc.In)
+	c.LocalPath = "/Users/sergey/test"
+	c.RemotePath = "/home/sergey/test"
+
+	err = c.RunHello()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	remoteList, err := c.RunReqList()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	// fmt.Println(string(remoteList.Encode()))
+
+	localList, err := filelist.Make(c.LocalPath)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	// fmt.Println(string(localList.Encode()))
+
+	syncplan := filelist.Compare(localList, remoteList)
+	syncplan.Show()
 
 }
