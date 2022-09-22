@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"log"
+	"path/filepath"
 	"strings"
 	"unisync/commands"
 	"unisync/filelist"
@@ -25,6 +27,16 @@ func New(in io.Reader, out io.Writer) *Client {
 		out:        out,
 		buffersize: 1000000,
 	}
+}
+
+func (c *Client) path(path string) string {
+	if c.LocalPath == "" {
+		log.Fatalln("client.LocalPath is not set")
+	}
+
+	path = filepath.Join(c.LocalPath, path)
+	path = filepath.Clean(path)
+	return path
 }
 
 func (c *Client) RunHello() error {

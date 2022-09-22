@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"unisync/client"
-	"unisync/filelist"
 	"unisync/server"
 	"unisync/sshclient"
 )
@@ -51,19 +50,9 @@ func runClient() {
 		log.Fatalln(err)
 	}
 
-	remoteList, err := c.RunReqList()
+	err = c.Sync()
 	if err != nil {
 		log.Fatalln(err)
 	}
-	// fmt.Println(string(remoteList.Encode()))
-
-	localList, err := filelist.Make(c.LocalPath)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	// fmt.Println(string(localList.Encode()))
-
-	syncplan := filelist.Compare(localList, remoteList)
-	syncplan.Show()
 
 }

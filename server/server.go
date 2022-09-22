@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,9 +31,9 @@ func New(in io.Reader, out io.Writer) *Server {
 	}
 }
 
-func (server *Server) mkPath(path string) string {
+func (server *Server) path(path string) string {
 	if server.basepath == "" {
-		return ""
+		log.Fatalln("server.basepath is not set")
 	}
 
 	path = filepath.Join(server.basepath, path)
@@ -79,6 +80,8 @@ func (server *Server) handle(line string) error {
 		return server.handleHELLO(json)
 	case "REQLIST":
 		return server.handleREQLIST(json)
+	case "MKDIR":
+		return server.handleMKDIR(json)
 	case "PULL":
 		return server.handlePULL(json)
 	default:
@@ -111,7 +114,12 @@ func (server *Server) handleHELLO(json string) error {
 
 	server.version = 1
 	server.basepath = basepath
-	fmt.Fprintf(server.out, "OK\n")
+
+	_, err = io.WriteString(server.out, "OK\n")
+	if err != nil {
+		return &DeepError{err}
+	}
+
 	return nil
 }
 
@@ -122,7 +130,7 @@ func (server *Server) handleREQLIST(json string) error {
 		return err
 	}
 
-	list, err := filelist.Make(server.mkPath(args.Path))
+	list, err := filelist.Make(server.path(args.Path))
 
 	if err != nil {
 		return err
@@ -141,6 +149,28 @@ func (server *Server) handleREQLIST(json string) error {
 		return &DeepError{err}
 	}
 
+	return nil
+}
+
+func (server *Server) handleMKDIR(json string) error {
+	args := &commands.Mkdir{}
+	err := commands.ParseCommand(json, args)
+	if err != nil {
+		return err
+	}
+
+	for _, dir := range args.Dirs {
+		fullpath := server.path(dir.Path)
+		err := os.MkdirAll(fullpath, 0755)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = io.WriteString(server.out, "OK\n")
+	if err != nil {
+		return &DeepError{err}
+	}
 	return nil
 }
 
@@ -163,7 +193,7 @@ func (server *Server) handlePULL(json string) error {
 }
 
 func (server *Server) pushFile(path string) error {
-	filename := server.mkPath(path)
+	filename := server.path(path)
 	info, err := os.Lstat(filename)
 	if err != nil {
 		return err

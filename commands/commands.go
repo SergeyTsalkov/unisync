@@ -18,7 +18,7 @@ type Push struct {
 }
 
 type CommandType interface {
-	Hello | ReqList | ResList | Pull | Push
+	Hello | ReqList | ResList | Pull | Push | Mkdir
 }
 
 type Command interface {
