@@ -11,23 +11,19 @@ import (
 	"unisync/commands"
 	"unisync/filelist"
 	"unisync/node"
-
-	jsonC "encoding/json"
 )
 
 type Server struct {
-	version    int
-	in         io.Reader
-	out        io.Writer
-	basepath   string
-	buffersize int
+	version  int
+	in       *bufio.Reader
+	out      *node.Writer
+	basepath string
 }
 
 func New(in io.Reader, out io.Writer) *Server {
 	return &Server{
-		in:         in,
-		out:        out,
-		buffersize: 1000000,
+		in:  bufio.NewReader(in),
+		out: node.NewWriter(out),
 	}
 }
 
@@ -36,11 +32,8 @@ func (server *Server) path(path string) string {
 }
 
 func (server *Server) Run() error {
-	reader := bufio.NewReader(server.in)
-	var deepError *DeepError
-
 	for {
-		line, err := reader.ReadString('\n')
+		line, err := server.in.ReadString('\n')
 		if err != nil {
 			return err
 		}
@@ -51,10 +44,10 @@ func (server *Server) Run() error {
 
 		err = server.handle(line)
 		if err != nil {
-			if errors.As(err, &deepError) {
+			if errors.Is(err, node.ErrDeep) {
 				return err
 			} else {
-				fmt.Fprintf(server.out, "ERR %v\n", err)
+				server.out.SendErr(err)
 			}
 		}
 	}
@@ -78,6 +71,8 @@ func (server *Server) handle(line string) error {
 		return server.handleMKDIR(json)
 	case "PULL":
 		return server.handlePULL(json)
+	case "PUSH":
+		return server.handlePUSH(json)
 	default:
 		return fmt.Errorf("invalid command")
 	}
@@ -87,7 +82,7 @@ func (server *Server) handle(line string) error {
 
 func (server *Server) handleHELLO(json string) error {
 	args := &commands.Hello{}
-	err := commands.ParseCommand(json, args)
+	err := commands.Parse(json, args)
 	if err != nil {
 		return err
 	}
@@ -109,9 +104,9 @@ func (server *Server) handleHELLO(json string) error {
 	server.version = 1
 	server.basepath = basepath
 
-	_, err = io.WriteString(server.out, "OK\n")
+	err = server.out.SendString("OK")
 	if err != nil {
-		return &DeepError{err}
+		return err
 	}
 
 	return nil
@@ -119,7 +114,7 @@ func (server *Server) handleHELLO(json string) error {
 
 func (server *Server) handleREQLIST(json string) error {
 	args := &commands.ReqList{}
-	err := commands.ParseCommand(json, args)
+	err := commands.Parse(json, args)
 	if err != nil {
 		return err
 	}
@@ -130,17 +125,10 @@ func (server *Server) handleREQLIST(json string) error {
 		return err
 	}
 
-	output := list.Encode()
-	reply := &commands.ResList{int64(len(output))}
-
-	_, err = io.WriteString(server.out, reply.Encode())
+	reply := &commands.ResList{list}
+	err = server.out.SendCmd(reply)
 	if err != nil {
-		return &DeepError{err}
-	}
-
-	_, err = server.out.Write(output)
-	if err != nil {
-		return &DeepError{err}
+		return err
 	}
 
 	return nil
@@ -148,7 +136,7 @@ func (server *Server) handleREQLIST(json string) error {
 
 func (server *Server) handleMKDIR(json string) error {
 	args := &commands.Mkdir{}
-	err := commands.ParseCommand(json, args)
+	err := commands.Parse(json, args)
 	if err != nil {
 		return err
 	}
@@ -161,16 +149,16 @@ func (server *Server) handleMKDIR(json string) error {
 		}
 	}
 
-	_, err = io.WriteString(server.out, "OK\n")
+	err = server.out.SendString("OK")
 	if err != nil {
-		return &DeepError{err}
+		return err
 	}
 	return nil
 }
 
 func (server *Server) handlePULL(json string) error {
 	args := &commands.Pull{}
-	err := commands.ParseCommand(json, args)
+	err := commands.Parse(json, args)
 	if err != nil {
 		return err
 	}
@@ -180,58 +168,35 @@ func (server *Server) handlePULL(json string) error {
 	}
 
 	for _, path := range args.Paths {
-		server.pushFile(path)
+		err = node.SendFile(server.out, path, server.path(path))
+		if err != nil {
+			if errors.Is(err, node.ErrDeep) {
+				return err
+			} else {
+				server.out.SendPathErr(path, err)
+			}
+		}
 	}
 
 	return nil
 }
 
-func (server *Server) pushFile(path string) error {
-	filename := server.path(path)
-	info, err := os.Lstat(filename)
+func (server *Server) handlePUSH(json string) error {
+	args := &commands.Push{}
+	err := commands.Parse(json, args)
 	if err != nil {
 		return err
 	}
 
-	file, err := os.Open(filename)
+	buf := make([]byte, args.Length)
+	_, err = io.ReadAtLeast(server.in, buf, len(buf))
 	if err != nil {
 		return err
 	}
-	defer file.Close()
 
-	buffer := make([]byte, server.buffersize)
-	more := true
-
-	for more {
-		n, err := file.Read(buffer)
-		if err != nil && err != io.EOF {
-			return err
-		} else if err == io.EOF {
-			more = false
-		}
-
-		push := &commands.Push{
-			Path:       path,
-			Length:     int64(n),
-			IsDir:      info.IsDir(),
-			ModifiedAt: info.ModTime().Unix(),
-			More:       more,
-		}
-
-		json, err := jsonC.Marshal(push)
-		if err != nil {
-			return err
-		}
-
-		_, err = fmt.Fprintf(server.out, "PUSH %v\n", string(json))
-		if err != nil {
-			return &DeepError{err}
-		}
-
-		_, err = server.out.Write(buffer[0:n])
-		if err != nil {
-			return &DeepError{err}
-		}
+	err = node.ReceiveFile(server.path(args.Path), args, buf)
+	if err != nil {
+		return err
 	}
 
 	return nil

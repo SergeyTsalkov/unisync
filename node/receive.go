@@ -1,0 +1,52 @@
+package node
+
+import (
+	"log"
+	"os"
+	"path/filepath"
+	"time"
+	"unisync/commands"
+)
+
+var receiving = map[string]*os.File{}
+
+func ReceiveFile(filename string, cmd *commands.Push, buf []byte) error {
+	file := receiving[filename]
+	var err error
+
+	// starting to receive a file
+	if file == nil {
+		dir, _ := filepath.Split(filename)
+		err = os.MkdirAll(dir, 0755)
+		if err != nil {
+			return err
+		}
+
+		file, err = os.Create(filename)
+		if err != nil {
+			return err
+		}
+		receiving[filename] = file
+	}
+
+	if !cmd.More {
+		defer func() {
+			delete(receiving, filename)
+			err := file.Close()
+			if err != nil {
+				log.Fatalln("err closing file", filename, ":", err)
+			}
+			err = os.Chtimes(filename, time.Now(), time.Unix(cmd.ModifiedAt, 0))
+			if err != nil {
+				log.Fatalln("err setting mtime", filename, ":", err)
+			}
+		}()
+	}
+
+	_, err = file.Write(buf)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

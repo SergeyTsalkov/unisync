@@ -1,8 +1,6 @@
 package filelist
 
 import (
-	"encoding/json"
-	"fmt"
 	"io/fs"
 	"path/filepath"
 )
@@ -51,17 +49,17 @@ func Make(basepath string) (FileList, error) {
 	return list, nil
 }
 
-func (list FileList) Encode() []byte {
-	output, _ := json.MarshalIndent(list, "", "  ")
-	return output
-}
+// func (list FileList) Encode() []byte {
+// 	output, _ := json.MarshalIndent(list, "", "  ")
+// 	return output
+// }
 
-func Parse(bytes []byte) (FileList, error) {
-	list := FileList{}
+// func Parse(bytes []byte) (FileList, error) {
+// 	list := FileList{}
 
-	err := json.Unmarshal(bytes, &list)
-	if err != nil {
-		return nil, fmt.Errorf("invalid json: %w", err)
-	}
-	return list, nil
-}
+// 	err := json.Unmarshal(bytes, &list)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("invalid json: %w", err)
+// 	}
+// 	return list, nil
+// }

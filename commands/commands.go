@@ -3,6 +3,7 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 )
 
 type Pull struct {
@@ -14,11 +15,19 @@ type CommandType interface {
 }
 
 type Command interface {
-	Encode() string
-	Type() string
+	CmdType() string
 }
 
-func ParseCommand[T CommandType](str string, ptr *T) error {
+func Encode(c Command) string {
+	bytes, err := json.Marshal(c)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	return c.CmdType() + " " + string(bytes)
+}
+
+func Parse[T CommandType](str string, ptr *T) error {
 	if str == "" {
 		return nil
 	}

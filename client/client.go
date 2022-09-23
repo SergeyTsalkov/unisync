@@ -13,7 +13,7 @@ import (
 type Client struct {
 	version    int
 	in         *bufio.Reader
-	out        io.Writer
+	out        *node.Writer
 	buffersize int
 
 	LocalPath  string
@@ -21,9 +21,12 @@ type Client struct {
 }
 
 func New(in io.Reader, out io.Writer) *Client {
+	writer := node.NewWriter(out)
+	writer.Debug = true
+
 	return &Client{
 		in:         bufio.NewReader(in),
-		out:        out,
+		out:        writer,
 		buffersize: 1000000,
 	}
 }
@@ -56,30 +59,16 @@ func (c *Client) RunReqList() (filelist.FileList, error) {
 	}
 
 	reply := &commands.ResList{}
-	err = commands.ParseCommand(json, reply)
+	err = commands.Parse(json, reply)
 	if err != nil {
 		return nil, err
 	}
 
-	buf := make([]byte, reply.Length)
-	_, err = io.ReadAtLeast(c.in, buf, len(buf))
-	if err != nil {
-		return nil, err
-	}
-
-	list, err := filelist.Parse(buf)
-	if err != nil {
-		return nil, err
-	}
-
-	return list, nil
+	return reply.FileList, nil
 }
 
 func (c *Client) Send(cmd commands.Command) error {
-	output := cmd.Encode()
-	fmt.Printf("-> %v", output)
-	_, err := io.WriteString(c.out, cmd.Encode())
-	return err
+	return c.out.SendCmd(cmd)
 }
 
 func (c *Client) GetCommand() (cmd string, json string, err error) {

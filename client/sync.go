@@ -5,6 +5,7 @@ import (
 	"os"
 	"unisync/commands"
 	"unisync/filelist"
+	"unisync/node"
 )
 
 func (c *Client) Sync() error {
@@ -19,6 +20,7 @@ func (c *Client) Sync() error {
 	}
 
 	syncplan := filelist.Compare(localList, remoteList)
+	syncplan.Show()
 
 	for _, file := range syncplan.LocalMkdir {
 		fullpath := c.path(file.Path)
@@ -46,7 +48,13 @@ func (c *Client) Sync() error {
 		if err != nil {
 			return err
 		}
+	}
 
+	for _, file := range syncplan.Push {
+		err = node.SendFile(c.out, file.Path, c.path(file.Path))
+		if err != nil {
+			log.Println(err)
+		}
 	}
 
 	return nil
