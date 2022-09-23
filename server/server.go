@@ -5,12 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"unisync/commands"
 	"unisync/filelist"
+	"unisync/node"
 
 	jsonC "encoding/json"
 )
@@ -32,13 +32,7 @@ func New(in io.Reader, out io.Writer) *Server {
 }
 
 func (server *Server) path(path string) string {
-	if server.basepath == "" {
-		log.Fatalln("server.basepath is not set")
-	}
-
-	path = filepath.Join(server.basepath, path)
-	path = filepath.Clean(path)
-	return path
+	return node.Path(server.basepath, path)
 }
 
 func (server *Server) Run() error {

@@ -4,11 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
-	"path/filepath"
 	"strings"
 	"unisync/commands"
 	"unisync/filelist"
+	"unisync/node"
 )
 
 type Client struct {
@@ -30,13 +29,7 @@ func New(in io.Reader, out io.Writer) *Client {
 }
 
 func (c *Client) path(path string) string {
-	if c.LocalPath == "" {
-		log.Fatalln("client.LocalPath is not set")
-	}
-
-	path = filepath.Join(c.LocalPath, path)
-	path = filepath.Clean(path)
-	return path
+	return node.Path(c.LocalPath, path)
 }
 
 func (c *Client) RunHello() error {

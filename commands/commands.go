@@ -9,14 +9,6 @@ type Pull struct {
 	Paths []string `json:"paths"`
 }
 
-type Push struct {
-	Path       string `json:"path"`
-	IsDir      bool   `json:"is_dir"`
-	ModifiedAt int64  `json:"modified_at"`
-	Length     int64  `json:"length"`
-	More       bool   `json:"more"`
-}
-
 type CommandType interface {
 	Hello | ReqList | ResList | Pull | Push | Mkdir
 }

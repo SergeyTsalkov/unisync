@@ -25,13 +25,16 @@ func Make(basepath string) (FileList, error) {
 			return err
 		}
 
-		relpath, _ := filepath.Rel(basepath, path)
+		relpath, err := filepath.Rel(basepath, path)
+		if err != nil {
+			return err
+		}
 		if relpath == "." {
 			return nil
 		}
 
 		item := &FileListItem{
-			Path:       relpath,
+			Path:       filepath.ToSlash(relpath),
 			IsDir:      info.IsDir(),
 			Size:       info.Size(),
 			ModifiedAt: info.ModTime().Unix(),
