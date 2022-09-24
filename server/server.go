@@ -194,7 +194,7 @@ func (server *Server) handlePUSH(json string) error {
 		return err
 	}
 
-	err = node.ReceiveFile(server.path(args.Path), args, buf)
+	_, err = node.ReceiveFile(server.path(args.Path), args, buf)
 	if err != nil {
 		return err
 	}

@@ -11,10 +11,9 @@ import (
 )
 
 type Client struct {
-	version    int
-	in         *bufio.Reader
-	out        *node.Writer
-	buffersize int
+	version int
+	in      *bufio.Reader
+	out     *node.Writer
 
 	LocalPath  string
 	RemotePath string
@@ -25,9 +24,8 @@ func New(in io.Reader, out io.Writer) *Client {
 	writer.Debug = true
 
 	return &Client{
-		in:         bufio.NewReader(in),
-		out:        writer,
-		buffersize: 1000000,
+		in:  bufio.NewReader(in),
+		out: writer,
 	}
 }
 

@@ -6,10 +6,6 @@ import (
 	"log"
 )
 
-type Pull struct {
-	Paths []string `json:"paths"`
-}
-
 type CommandType interface {
 	Hello | ReqList | ResList | Pull | Push | Mkdir
 }

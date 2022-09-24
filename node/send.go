@@ -28,11 +28,10 @@ func SendFile(output *Writer, path, filename string) error {
 		}
 	}()
 
-	buffer := make([]byte, BufferSize)
 	more := true
 
 	for more {
-		n, err := file.Read(buffer)
+		n, err := file.Read(Buffer)
 		if err == io.EOF {
 			more = false
 		} else if err != nil {
@@ -46,7 +45,7 @@ func SendFile(output *Writer, path, filename string) error {
 			More:       more,
 		}
 
-		err = output.SendCmdBuf(push, buffer[0:n])
+		err = output.SendCmdBuf(push, Buffer[0:n])
 		if err != nil {
 			return err
 		}

@@ -10,21 +10,21 @@ import (
 
 var receiving = map[string]*os.File{}
 
-func ReceiveFile(filename string, cmd *commands.Push, buf []byte) error {
+func ReceiveFile(filename string, cmd *commands.Push, buf []byte) (done bool, err error) {
 	file := receiving[filename]
-	var err error
+	done = !cmd.More
 
 	// starting to receive a file
 	if file == nil {
 		dir, _ := filepath.Split(filename)
 		err = os.MkdirAll(dir, 0755)
 		if err != nil {
-			return err
+			return
 		}
 
 		file, err = os.Create(filename)
 		if err != nil {
-			return err
+			return
 		}
 		receiving[filename] = file
 	}
@@ -44,9 +44,5 @@ func ReceiveFile(filename string, cmd *commands.Push, buf []byte) error {
 	}
 
 	_, err = file.Write(buf)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return
 }
