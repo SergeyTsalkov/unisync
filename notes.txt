@@ -1,55 +1,19 @@
-HELLO {"basepath":"/Users/sergey/test"}
-PULL {"paths":["a.txt"]}
-
-REQLIST
-REQLIST {"path":"subdir"}
-
-PULL {"paths":["filename","filename2",...]}
-  ERR {"path":"filename","error":"blah blah"}
-
-  PUSH {"path":"filename2","data":10,"more":true}
-  [10 bytes of data]
-  PUSH 
-
-MKDIR {"paths":...}
-DEL {"paths":...}
-
-
-FSEVENT
-
-
-server:
-  main loop needs to use select{} to check for new messages, and for filesystem change events
-
-client:
-  STAGE 1- initial sync
-  STAGE 2- ongoing sync
-
-  - after a command, need to wait for replies; next command might be a FSEVENT instead of what we were expecting
-  - main loop needs to handle FSEVENT, funnel all other commands to WaitFor(); if a WaitFor() hasn't attached yet then just hold it in reserve because one will certainly attach soon
-
-
-
-  client.RunHello()
-  client.RunReqList()
-  compareToLocal()
-  client.RunPull([]files)
-  foreach files: client.RunPush(file)
-
-
-  client.RunReqList():
-    client.Send("REQLIST")
-    client.WaitFor("RESLIST")
-
-  client.RunPull():
-    client.Send("PULL")
-    client.WaitFor("PUSH", "PUSHERR")
-
-  client.RunHello():
-    client.Send("HELLO")
-    client.WaitFor("OK")
-
-
-
 
 rsync --archive --delete --exclude='.git' --exclude='unisync' /Users/sergey/unisync/ sergey@51.79.19.179:unisync
+
+{
+  local: /path/to/stuff
+  remote: /path/to/stuff
+  host: user@host | ip:port (direct)
+  method: ssh | nativessh | directtls
+  chmod_local = 0644
+  chmod_local_dir = 0755
+  chmod_local_mask = 0100
+  chmod_remote = 0644
+  chmod_remote_dir = 0755
+  chmod_remote_mask = 0100
+
+}
+
+
+

@@ -22,7 +22,6 @@ func (c *Client) Sync() error {
 	}
 
 	syncplan := filelist.Compare(localList, remoteList)
-	syncplan.Show()
 
 	for _, file := range syncplan.LocalMkdir {
 		fullpath := c.path(file.Path)
@@ -34,11 +33,11 @@ func (c *Client) Sync() error {
 
 	if len(syncplan.RemoteMkdir) > 0 {
 		mkdir := &commands.Mkdir{
-			Dirs: []*commands.MkdirAction{},
+			Dirs: make([]*commands.MkdirAction, len(syncplan.RemoteMkdir)),
 		}
 
-		for _, file := range syncplan.RemoteMkdir {
-			mkdir.Dirs = append(mkdir.Dirs, &commands.MkdirAction{Path: file.Path})
+		for i, file := range syncplan.RemoteMkdir {
+			mkdir.Dirs[i] = &commands.MkdirAction{Path: file.Path}
 		}
 
 		err = c.Send(mkdir)
@@ -60,11 +59,13 @@ func (c *Client) Sync() error {
 	}
 
 	if len(syncplan.Pull) > 0 {
-		pull := &commands.Pull{}
 		paths := map[string]bool{}
+		pull := &commands.Pull{
+			Paths: make([]string, len(syncplan.Pull)),
+		}
 
-		for _, file := range syncplan.Pull {
-			pull.Paths = append(pull.Paths, file.Path)
+		for i, file := range syncplan.Pull {
+			pull.Paths[i] = file.Path
 			paths[file.Path] = true
 		}
 

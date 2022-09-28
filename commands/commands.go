@@ -6,9 +6,9 @@ import (
 	"log"
 )
 
-type CommandType interface {
-	Hello | ReqList | ResList | Pull | Push | Mkdir
-}
+// type CommandType interface {
+// 	Hello | ReqList | ResList | Pull | Push | Mkdir
+// }
 
 type Command interface {
 	CmdType() string
@@ -23,12 +23,10 @@ func Encode(c Command) string {
 	return c.CmdType() + " " + string(bytes)
 }
 
-func Parse[T CommandType](str string, ptr *T) error {
+func Parse(str string, ptr Command) error {
 	if str == "" {
 		return nil
 	}
-
-	//typ := fmt.Printf("%T", *ptr)
 
 	err := json.Unmarshal([]byte(str), ptr)
 	if err != nil {

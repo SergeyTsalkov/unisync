@@ -30,6 +30,9 @@ func Make(basepath string) (FileList, error) {
 		if relpath == "." {
 			return nil
 		}
+		if !info.IsDir() && !info.Mode().IsRegular() {
+			return nil
+		}
 
 		item := &FileListItem{
 			Path:       filepath.ToSlash(relpath),

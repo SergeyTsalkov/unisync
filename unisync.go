@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"unisync/client"
+	"unisync/config"
 	"unisync/server"
 	"unisync/sshclient"
 )
@@ -13,6 +14,11 @@ func main() {
 	stdServerFlag := flag.Bool("stdserver", false, "run server that uses stdin/stdout (internal use only)")
 	sshClientFlag := flag.Bool("client", true, "connect through ssh to a remote unisync server")
 	flag.Parse()
+
+	err := config.Parse("test.json")
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	if *stdServerFlag {
 		runServer()
@@ -35,15 +41,15 @@ func runServer() {
 }
 
 func runClient() {
-	sshc := sshclient.New()
+	sshc := sshclient.New(config.C.Host)
 	err := sshc.Run()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	c := client.New(sshc.Out, sshc.In)
-	c.LocalPath = "/Users/sergey/test"
-	c.RemotePath = "/home/sergey/test"
+	c.LocalPath = config.C.Local
+	c.RemotePath = config.C.Remote
 
 	err = c.RunHello()
 	if err != nil {
