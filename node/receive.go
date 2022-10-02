@@ -5,7 +5,6 @@ import (
 	"os"
 	"time"
 	"unisync/commands"
-	"unisync/config"
 )
 
 var receiving = map[string]*os.File{}
@@ -55,14 +54,14 @@ func (n *Node) ReceiveFile(cmd *commands.Push, buf []byte) (done bool, err error
 
 // returns filemode, or default mode if file doesn't exist
 // only works in client context
-func fileMode(filename string) os.FileMode {
-	if config.IsServer {
-		log.Fatalln("fileMode() should not be called from server")
-	}
+// func fileMode(filename string) os.FileMode {
+// 	if config.IsServer {
+// 		log.Fatalln("fileMode() should not be called from server")
+// 	}
 
-	info, err := os.Lstat(filename)
-	if err != nil {
-		return config.C.Chmod.Local.Perm()
-	}
-	return info.Mode().Perm()
-}
+// 	info, err := os.Lstat(filename)
+// 	if err != nil {
+// 		return config.C.Chmod.Local.Perm()
+// 	}
+// 	return info.Mode().Perm()
+// }

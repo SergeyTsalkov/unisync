@@ -15,19 +15,20 @@ type Client struct {
 	*node.Node
 }
 
-func New(in io.Reader, out io.Writer) *Client {
+func New(in io.Reader, out io.Writer, config *config.Config) *Client {
 	node := &node.Node{
-		Basepath: config.C.Local,
+		Basepath: config.Local,
 		In:       bufio.NewReader(in),
 		Out:      out,
 		Debug:    true,
+		Config:   config,
 	}
 
 	return &Client{node}
 }
 
 func (c *Client) RunHello() error {
-	cmd := &commands.Hello{config.C.Remote}
+	cmd := &commands.Hello{c.Config.Remote}
 	err := c.SendCmd(cmd)
 	if err != nil {
 		return err

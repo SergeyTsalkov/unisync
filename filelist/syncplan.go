@@ -2,38 +2,31 @@ package filelist
 
 import (
 	"fmt"
-	"io/fs"
 	"sort"
-	"unisync/config"
 )
 
-type SyncPlanItem struct {
-	Path string
-	Mode fs.FileMode
-}
-
 type SyncPlan struct {
-	Pull        []*SyncPlanItem
-	Push        []*SyncPlanItem
-	LocalMkdir  []*SyncPlanItem
-	RemoteMkdir []*SyncPlanItem
-	LocalChmod  []*SyncPlanItem
-	RemoteChmod []*SyncPlanItem
-	LocalDel    []*SyncPlanItem
-	RemoteDel   []*SyncPlanItem
+	Pull        []*FileListItem
+	Push        []*FileListItem
+	LocalMkdir  []*FileListItem
+	RemoteMkdir []*FileListItem
+	LocalChmod  []*FileListItem
+	RemoteChmod []*FileListItem
+	LocalDel    []*FileListItem
+	RemoteDel   []*FileListItem
 }
 
 func NewSyncPlan() *SyncPlan {
 	plan := &SyncPlan{
-		Pull:        []*SyncPlanItem{},
-		Push:        []*SyncPlanItem{},
-		LocalMkdir:  []*SyncPlanItem{},
-		RemoteMkdir: []*SyncPlanItem{},
-		LocalChmod:  []*SyncPlanItem{},
-		RemoteChmod: []*SyncPlanItem{},
+		Pull:        []*FileListItem{},
+		Push:        []*FileListItem{},
+		LocalMkdir:  []*FileListItem{},
+		RemoteMkdir: []*FileListItem{},
+		LocalChmod:  []*FileListItem{},
+		RemoteChmod: []*FileListItem{},
 
-		// LocalDel:    []*SyncPlanItem{},
-		// RemoteDel:   []*SyncPlanItem{},
+		// LocalDel:    []*FileListItem{},
+		// RemoteDel:   []*FileListItem{},
 	}
 
 	return plan
@@ -45,60 +38,26 @@ func (plan *SyncPlan) Clean() {
 }
 
 func (plan *SyncPlan) Mkdir(isLocal bool, item *FileListItem) {
-	mask := config.C.Chmod.DirMask.Perm()
-	var baseMode fs.FileMode
 	if isLocal {
-		baseMode = config.C.Chmod.LocalDir.Perm()
+		plan.LocalMkdir = append(plan.LocalMkdir, item)
 	} else {
-		baseMode = config.C.Chmod.RemoteDir.Perm()
-	}
-	syncItem := &SyncPlanItem{Path: item.Path, Mode: ModeMask(baseMode, item.Mode, mask)}
-
-	if isLocal {
-		plan.LocalMkdir = append(plan.LocalMkdir, syncItem)
-	} else {
-		plan.RemoteMkdir = append(plan.RemoteMkdir, syncItem)
+		plan.RemoteMkdir = append(plan.RemoteMkdir, item)
 	}
 }
 
-// srcItem's mode is used as source to change item's mode
-func (plan *SyncPlan) Chmod(isLocal bool, srcItem, item *FileListItem) {
-	var mask fs.FileMode
-	if item.IsDir {
-		mask = config.C.Chmod.DirMask.Perm()
-	} else {
-		mask = config.C.Chmod.Mask.Perm()
-	}
-	syncItem := &SyncPlanItem{Path: item.Path, Mode: ModeMask(item.Mode, srcItem.Mode, mask)}
-
+func (plan *SyncPlan) Chmod(isLocal bool, item *FileListItem) {
 	if isLocal {
-		plan.LocalChmod = append(plan.LocalChmod, syncItem)
+		plan.LocalChmod = append(plan.LocalChmod, item)
 	} else {
-		plan.RemoteChmod = append(plan.RemoteChmod, syncItem)
+		plan.RemoteChmod = append(plan.RemoteChmod, item)
 	}
 }
 
-func (plan *SyncPlan) Sync(toLocal bool, srcItem, item *FileListItem) {
-	var baseMode fs.FileMode
-	if item != nil && item.Mode != 0 {
-		baseMode = item.Mode
-	} else if toLocal {
-		baseMode = config.C.Chmod.Local.Perm()
-	} else {
-		baseMode = config.C.Chmod.Remote.Perm()
-	}
-
-	mode := baseMode
-	if srcItem.Mode != 0 {
-		mask := config.C.Chmod.Mask.Perm()
-		mode = ModeMask(baseMode, srcItem.Mode, mask)
-	}
-
-	syncItem := &SyncPlanItem{Path: srcItem.Path, Mode: mode}
+func (plan *SyncPlan) Sync(toLocal bool, item *FileListItem) {
 	if toLocal {
-		plan.Pull = append(plan.Pull, syncItem)
+		plan.Pull = append(plan.Pull, item)
 	} else {
-		plan.Push = append(plan.Push, syncItem)
+		plan.Push = append(plan.Push, item)
 	}
 }
 

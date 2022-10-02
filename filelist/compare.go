@@ -1,32 +1,42 @@
 package filelist
 
 import (
+	"io/fs"
 	"log"
 	"unisync/config"
 )
 
-func Sync2Way(localList, remoteList FileList) *SyncPlan {
-	plan := NewSyncPlan()
+type SyncPlanBuilder struct {
+	Config *config.Config
+	Plan   *SyncPlan
+}
+
+func NewSyncPlanBuilder(config *config.Config) *SyncPlanBuilder {
+	return &SyncPlanBuilder{Config: config}
+}
+
+func (b *SyncPlanBuilder) BuildSyncPlan(localList, remoteList FileList) *SyncPlan {
+	b.Plan = NewSyncPlan()
 	index := indexFileList(localList, remoteList)
 
 	for _, lists := range index {
-		compare2Way(lists.local, lists.remote, plan)
+		b.compare2Way(lists.local, lists.remote)
 	}
 
-	plan.Clean()
-	return plan
+	b.Plan.Clean()
+	return b.Plan
 }
 
-func compare2Way(local, remote *FileListItem, plan *SyncPlan) {
+func (b *SyncPlanBuilder) compare2Way(local, remote *FileListItem) {
 	if local == nil && remote == nil {
 		log.Fatalln("local and remote cannot both be nil")
 	}
 
 	if remote == nil {
 		if local.IsDir {
-			plan.Mkdir(false, local)
+			b.Plan.Mkdir(false, local)
 		} else {
-			plan.Sync(false, local, remote)
+			b.Plan.Sync(false, local)
 		}
 
 		return
@@ -34,9 +44,9 @@ func compare2Way(local, remote *FileListItem, plan *SyncPlan) {
 
 	if local == nil {
 		if remote.IsDir {
-			plan.Mkdir(true, remote)
+			b.Plan.Mkdir(true, remote)
 		} else {
-			plan.Sync(true, remote, local)
+			b.Plan.Sync(true, remote)
 		}
 
 		return
@@ -49,24 +59,24 @@ func compare2Way(local, remote *FileListItem, plan *SyncPlan) {
 		// TODO: figure this out
 
 	} else if !local.IsDir && !isSame {
-		if preferLocal(local, remote) {
-			plan.Sync(false, local, remote)
+		if b.preferLocal(local, remote) {
+			b.Plan.Sync(false, local)
 		} else {
-			plan.Sync(true, remote, local)
+			b.Plan.Sync(true, remote)
 		}
 
-	} else if !compareModes(local, remote) {
-		if preferLocal(local, remote) {
-			plan.Chmod(false, local, remote)
+	} else if !b.compareModes(local, remote) {
+		if b.preferLocal(local, remote) {
+			b.Plan.Chmod(false, local)
 		} else {
-			plan.Chmod(true, remote, local)
+			b.Plan.Chmod(true, remote)
 		}
 	}
 
 }
 
-func preferLocal(local, remote *FileListItem) bool {
-	switch config.C.Prefer {
+func (b *SyncPlanBuilder) preferLocal(local, remote *FileListItem) bool {
+	switch b.Config.Prefer {
 	case "newest":
 		return local.ModifiedAt >= remote.ModifiedAt
 	case "oldest":
@@ -82,24 +92,25 @@ func preferLocal(local, remote *FileListItem) bool {
 	return true
 }
 
-func compareModes(local, remote *FileListItem) bool {
-	if local.Mode == 0 || remote.Mode == 0 {
+func (b *SyncPlanBuilder) compareModes(local, remote *FileListItem) bool {
+	localMode := local.Mode.Perm()
+	remoteMode := remote.Mode.Perm()
+
+	if localMode == 0 || remoteMode == 0 {
 		return true
 	}
 	if local.IsDir != remote.IsDir {
 		return true
 	}
 
-	localMode := local.Mode.Perm()
-	remoteMode := remote.Mode.Perm()
-
+	var mask fs.FileMode
 	if local.IsDir {
-		localMode = localMode & config.C.Chmod.DirMask.Perm()
-		remoteMode = remoteMode & config.C.Chmod.DirMask.Perm()
+		mask = b.Config.Chmod.DirMask.Perm()
 	} else {
-		localMode = localMode & config.C.Chmod.Mask.Perm()
-		remoteMode = remoteMode & config.C.Chmod.Mask.Perm()
+		mask = b.Config.Chmod.Mask.Perm()
 	}
 
+	localMode = localMode & mask
+	remoteMode = remoteMode & mask
 	return localMode == remoteMode
 }

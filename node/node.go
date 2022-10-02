@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"path/filepath"
+	"unisync/config"
 )
 
 var Buffer = make([]byte, 1000000)
@@ -14,6 +15,7 @@ type Node struct {
 	In       *bufio.Reader
 	Out      io.Writer
 	Debug    bool
+	Config   *config.Config
 }
 
 func (n *Node) Path(path string) string {

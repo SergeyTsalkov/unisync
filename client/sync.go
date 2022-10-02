@@ -21,7 +21,8 @@ func (c *Client) Sync() error {
 		return err
 	}
 
-	syncplan := filelist.Sync2Way(localList, remoteList)
+	b := filelist.NewSyncPlanBuilder(c.Config)
+	syncplan := b.BuildSyncPlan(localList, remoteList)
 
 	for _, file := range syncplan.LocalMkdir {
 		fullpath := c.Path(file.Path)
@@ -59,14 +60,14 @@ func (c *Client) Sync() error {
 	}
 
 	if len(syncplan.Pull) > 0 {
-		paths := map[string]*filelist.SyncPlanItem{}
+		paths := map[string]bool{}
 		pull := &commands.Pull{
 			Paths: make([]string, len(syncplan.Pull)),
 		}
 
 		for i, file := range syncplan.Pull {
 			pull.Paths[i] = file.Path
-			paths[file.Path] = file
+			paths[file.Path] = true
 		}
 
 		err = c.SendCmd(pull)

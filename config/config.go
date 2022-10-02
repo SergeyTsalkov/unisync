@@ -11,7 +11,7 @@ import (
 	"sync"
 )
 
-type configType struct {
+type Config struct {
 	Local  string `json:"local"`
 	Remote string `json:"remote"`
 	Host   string `json:"host"`
@@ -30,12 +30,10 @@ type configTypeChmod struct {
 	DirMask   *fs.FileMode `json:"dir_mask`
 }
 
-var IsServer = false
-var C *configType
 var once sync.Once
 var configDir string
 
-func Parse(path string) error {
+func Parse(path string) (*Config, error) {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(ConfigDir(), path)
 	}
@@ -46,25 +44,26 @@ func Parse(path string) error {
 		}
 
 		if !fileExists(path) {
-			return fmt.Errorf("ConfigFile %v does not exist", path)
+			return nil, fmt.Errorf("ConfigFile %v does not exist", path)
 		}
 	}
 
 	bytes, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("Unable to read ConfigFile %v: %v", path, err)
+		return nil, fmt.Errorf("Unable to read ConfigFile %v: %v", path, err)
 	}
 
-	err = json.Unmarshal(bytes, C)
-	if err != nil || C == nil {
-		return fmt.Errorf("Unable to parse ConfigFile %v: %v", path, err)
+	config := &Config{}
+	err = json.Unmarshal(bytes, config)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to parse ConfigFile %v: %v", path, err)
 	}
 
-	applyDefaults()
-	return nil
+	config.Validate()
+	return config, nil
 }
 
-func applyDefaults() {
+func (C *Config) Validate() {
 	if C.Chmod == nil {
 		C.Chmod = &configTypeChmod{}
 	}

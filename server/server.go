@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"unisync/commands"
-	"unisync/config"
 	"unisync/filelist"
 	"unisync/node"
 )
@@ -28,8 +27,6 @@ func New(in io.Reader, out io.Writer) *Server {
 }
 
 func (s *Server) Run() error {
-	config.IsServer = true
-
 	for {
 		line, err := s.In.ReadString('\n')
 		if err != nil {

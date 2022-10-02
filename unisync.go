@@ -36,18 +36,18 @@ func runServer() {
 }
 
 func runClient() {
-	err := config.Parse("test.json")
+	conf, err := config.Parse("test.json")
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	sshc := sshclient.New(config.C.Host)
+	sshc := sshclient.New(conf.Host)
 	err = sshc.Run()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	c := client.New(sshc.Out, sshc.In)
+	c := client.New(sshc.Out, sshc.In, conf)
 	err = c.RunHello()
 	if err != nil {
 		log.Fatalln(err)
