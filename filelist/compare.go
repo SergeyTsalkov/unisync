@@ -1,118 +1,105 @@
 package filelist
 
 import (
-	"fmt"
+	"log"
+	"unisync/config"
 )
 
-type SyncPlan struct {
-	Pull        []*FileListItem
-	Push        []*FileListItem
-	LocalMkdir  []*FileListItem
-	RemoteMkdir []*FileListItem
-	LocalDel    []*FileListItem
-	RemoteDel   []*FileListItem
-}
+func Sync2Way(localList, remoteList FileList) *SyncPlan {
+	plan := NewSyncPlan()
+	index := indexFileList(localList, remoteList)
 
-type IndexedFileList map[string]*FileListItem
-
-func Compare(_localList, _remoteList FileList) *SyncPlan {
-	plan := &SyncPlan{
-		Pull:        []*FileListItem{},
-		Push:        []*FileListItem{},
-		LocalMkdir:  []*FileListItem{},
-		RemoteMkdir: []*FileListItem{},
-		LocalDel:    []*FileListItem{},
-		RemoteDel:   []*FileListItem{},
+	for _, lists := range index {
+		compare2Way(lists.local, lists.remote, plan)
 	}
 
-	localList := indexFileList(_localList)
-	remoteList := indexFileList(_remoteList)
-
-	for path, local := range localList {
-		remote := remoteList[path]
-
-		if remote == nil {
-			if local.IsDir {
-				plan.RemoteMkdir = append(plan.RemoteMkdir, local)
-			} else {
-				plan.Push = append(plan.Push, local)
-			}
-		} else {
-
-			if local.IsDir && remote.IsDir {
-				// both dirs, do nothing
-			} else if local.ModifiedAt == remote.ModifiedAt && local.Size == remote.Size {
-				// already synced, do nothing
-			} else if local.ModifiedAt >= remote.ModifiedAt {
-				plan.Push = append(plan.Push, local)
-			} else {
-				plan.Pull = append(plan.Pull, local)
-			}
-		}
-	}
-
-	for path, remote := range remoteList {
-		local := localList[path]
-
-		if local == nil {
-			if remote.IsDir {
-				plan.LocalMkdir = append(plan.LocalMkdir, remote)
-			} else {
-				plan.Pull = append(plan.Pull, remote)
-			}
-		}
-	}
-
-	plan.LocalMkdir = clean(plan.LocalMkdir, plan.LocalMkdir)
-	plan.LocalMkdir = clean(plan.LocalMkdir, plan.Pull)
-
-	plan.RemoteMkdir = clean(plan.RemoteMkdir, plan.RemoteMkdir)
-	plan.RemoteMkdir = clean(plan.RemoteMkdir, plan.Push)
-
+	plan.Clean()
 	return plan
 }
 
-func (p *SyncPlan) Show() {
-	if len(p.Pull) > 0 {
-		fmt.Println("Pull files:")
-
-		for _, file := range p.Pull {
-			fmt.Println(file.Path)
-		}
+func compare2Way(local, remote *FileListItem, plan *SyncPlan) {
+	if local == nil && remote == nil {
+		log.Fatalln("local and remote cannot both be nil")
 	}
 
-	if len(p.Push) > 0 {
-		fmt.Println("Push files:")
-
-		for _, file := range p.Push {
-			fmt.Println(file.Path)
+	if remote == nil {
+		if local.IsDir {
+			plan.Mkdir(false, local)
+		} else {
+			plan.Sync(false, local, remote)
 		}
+
+		return
 	}
 
-	if len(p.LocalMkdir) > 0 {
-		fmt.Println("Local Mkdir:")
-
-		for _, file := range p.LocalMkdir {
-			fmt.Println(file.Path)
+	if local == nil {
+		if remote.IsDir {
+			plan.Mkdir(true, remote)
+		} else {
+			plan.Sync(true, remote, local)
 		}
+
+		return
 	}
 
-	if len(p.RemoteMkdir) > 0 {
-		fmt.Println("Remote Mkdir:")
+	isSame := local.ModifiedAt == remote.ModifiedAt && local.Size == remote.Size
+	isDirMismatch := local.IsDir != remote.IsDir
 
-		for _, file := range p.RemoteMkdir {
-			fmt.Println(file.Path)
+	if isDirMismatch {
+		// TODO: figure this out
+
+	} else if !local.IsDir && !isSame {
+		if preferLocal(local, remote) {
+			plan.Sync(false, local, remote)
+		} else {
+			plan.Sync(true, remote, local)
+		}
+
+	} else if !compareModes(local, remote) {
+		if preferLocal(local, remote) {
+			plan.Chmod(false, local, remote)
+		} else {
+			plan.Chmod(true, remote, local)
 		}
 	}
 
 }
 
-func indexFileList(list FileList) IndexedFileList {
-	indexedList := make(IndexedFileList)
-
-	for _, file := range list {
-		indexedList[file.Path] = file
+func preferLocal(local, remote *FileListItem) bool {
+	switch config.C.Prefer {
+	case "newest":
+		return local.ModifiedAt >= remote.ModifiedAt
+	case "oldest":
+		return local.ModifiedAt <= remote.ModifiedAt
+	case "local":
+		return true
+	case "remote":
+		return false
+	default:
+		log.Fatalln("config.prefer must be one of: newest, oldest, local, remote")
 	}
 
-	return indexedList
+	return true
+}
+
+func compareModes(local, remote *FileListItem) bool {
+	if local.Mode == 0 || remote.Mode == 0 {
+		return true
+	}
+	if local.IsDir != remote.IsDir {
+		return true
+	}
+
+	localMode := local.Mode.Perm()
+	remoteMode := remote.Mode.Perm()
+
+	if local.IsDir {
+		localMode = localMode & config.C.Chmod.DirMask.Perm()
+		remoteMode = remoteMode & config.C.Chmod.DirMask.Perm()
+	} else {
+		localMode = localMode & config.C.Chmod.Mask.Perm()
+		remoteMode = remoteMode & config.C.Chmod.Mask.Perm()
+	}
+
+	return localMode == remoteMode
 }

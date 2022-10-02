@@ -4,16 +4,66 @@ rsync --archive --delete --exclude='.git' --exclude='unisync' /Users/sergey/unis
 {
   local: /path/to/stuff
   remote: /path/to/stuff
-  host: user@host | ip:port (direct)
+  username: (required for ssh, ignored for directtls)
+  host: [ip]
+  port: (defaults to 22 for ssh, required for directtls)
   method: ssh | nativessh | directtls
-  chmod_local = 0644
-  chmod_local_dir = 0755
-  chmod_local_mask = 0100
-  chmod_remote = 0644
-  chmod_remote_dir = 0755
-  chmod_remote_mask = 0100
-
+  prefer: local | remote | newer | older (default: newer)
+  cache: filename (default: [name].cache)
 }
 
+example:
+  unisync ~/localpath user@host:remotepath/
+  unisync myhost.json
+
+2-way sync:
+  compare local & remote
+
+  if they're not dirs AND size or mtime differs:
+    - config.prefer wins
+
+  otherwise, if mode&mask differs
+    - if modes are different, config.prefer wins
+
+
+4-way sync:
+  -> save cache as configname.cache, or md5(local,remote,host)
+  compare local & remote (with caches)
+  if one side is dirty, that side wins
+  if both sides are dirty (or clean), then config.prefer wins
+  if one side's modes are dirty, that side wins chmod
+
+Problem with 2-way sync:
+  - what if client deletes file? server will put it back
+    -> SOLUTION: cache can detect deleted file as "event" with a particular mtime
+
+  - what if server clock is 5 minutes ahead of client clock?
+    - client edits file, server version is still ahead and overwrites it
+    -> SOLUTION: client remembers both local and remote caches (should be the same, aside from modes if one is Windows)
+
+  - what if a file on one side is a dir name on the other?
+    -> SOLUTION: a dir's effective mtime is the max mtime of a file underneath it; compare to file to determine winner
+
+  - what if one side is Windows, and has no file modes?
+    -> SOLUTION: don't set FileMode for FileListItem's on Windows (set to nil)
+       comparison functions won't handle chmod if one side is missing modes
+
+  - what if file push starts but doesn't finish?
+    -> SOLUTION: use tmp files to hold files that will then be moved into position
+       - if those files are put in the same working dir, make sure we don't accidentally try syncing them later
+
+
+
+applying chmod:
+  - mkdir
+  - chmod
+  - push/pull
+
+  - how to apply modes to server?
+    Option 1: client is only one aware of config rules, does chmod/push with modes pre-adjusted based on rules
+      - when receiving pushes, adjusts received mode based on rules
+
+    Option 2: client and server both aware of config rules
+      - chmod/push is sent with proper modes (based on what file has on other side), receiver adjusts based on rules
 
 

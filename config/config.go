@@ -7,48 +7,31 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 )
 
 type configType struct {
-	Local  string           `json:"local"`
-	Remote string           `json:"remote"`
-	Host   string           `json:"host"`
-	Method string           `json:"method"`
-	Chmod  *configTypeChmod `json:"chmod"`
+	Local  string `json:"local"`
+	Remote string `json:"remote"`
+	Host   string `json:"host"`
+	Method string `json:"method"`
+	Prefer string `json:"prefer'`
+
+	Chmod *configTypeChmod `json:"chmod"`
 }
 
 type configTypeChmod struct {
-	Local      fileMode `json:"local"`
-	LocalDir   fileMode `json:"local_dir"`
-	LocalMask  fileMode `json:"local_mask"`
-	Remote     fileMode `json:"remote"`
-	RemoteDir  fileMode `json:"remote_dir"`
-	RemoteMask fileMode `json:"remote_mask"`
+	Local     *fs.FileMode `json:"local"`
+	LocalDir  *fs.FileMode `json:"local_dir"`
+	Remote    *fs.FileMode `json:"remote"`
+	RemoteDir *fs.FileMode `json:"remote_dir"`
+	Mask      *fs.FileMode `json:"mask"`
+	DirMask   *fs.FileMode `json:"dir_mask`
 }
 
-type fileMode struct {
-	fs.FileMode
-	isSet bool
-}
-
-func (f *fileMode) UnmarshalJSON(b []byte) error {
-	var str string
-	if err := json.Unmarshal(b, &str); err != nil {
-		return err
-	}
-	i, err := strconv.ParseUint(str, 8, 32)
-	if err != nil {
-		return err
-	}
-	f.FileMode = fs.FileMode(i)
-	f.isSet = true
-	return nil
-}
-
-var C *configType = &configType{}
+var IsServer = false
+var C *configType
 var once sync.Once
 var configDir string
 
@@ -89,24 +72,35 @@ func applyDefaults() {
 		C.Method = "ssh"
 	}
 
-	if !C.Chmod.Local.isSet {
-		C.Chmod.Local.FileMode = 0644
+	if C.Prefer == "" {
+		C.Prefer = "newest"
 	}
-	if !C.Chmod.LocalDir.isSet {
-		C.Chmod.LocalDir.FileMode = 0755
+	if C.Prefer != "newest" && C.Prefer != "oldest" && C.Prefer != "local" && C.Prefer != "remote" {
+		log.Fatalln("config.prefer must be one of: newest, oldest, local, remote")
 	}
-	if !C.Chmod.LocalMask.isSet {
-		C.Chmod.LocalMask.FileMode = 0100
+
+	if C.Chmod.Local == nil {
+		C.Chmod.Local = makeMode(0644)
 	}
-	if !C.Chmod.Remote.isSet {
-		C.Chmod.Remote.FileMode = 0644
+	if C.Chmod.LocalDir == nil {
+		C.Chmod.LocalDir = makeMode(0755)
 	}
-	if !C.Chmod.RemoteDir.isSet {
-		C.Chmod.RemoteDir.FileMode = 0755
+	if C.Chmod.Remote == nil {
+		C.Chmod.Remote = makeMode(0644)
 	}
-	if !C.Chmod.RemoteMask.isSet {
-		C.Chmod.RemoteMask.FileMode = 0100
+	if C.Chmod.RemoteDir == nil {
+		C.Chmod.RemoteDir = makeMode(0755)
 	}
+	if C.Chmod.Mask == nil {
+		C.Chmod.Mask = makeMode(0100)
+	}
+	if C.Chmod.DirMask == nil {
+		C.Chmod.DirMask = makeMode(0)
+	}
+}
+
+func makeMode(mode fs.FileMode) *fs.FileMode {
+	return &mode
 }
 
 func ConfigDir() string {

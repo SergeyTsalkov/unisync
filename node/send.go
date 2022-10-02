@@ -42,6 +42,7 @@ func SendFile(output *Writer, path, filename string) error {
 			Path:       path,
 			Length:     int64(n),
 			ModifiedAt: info.ModTime().Unix(),
+			Mode:       info.Mode().Perm(),
 			More:       more,
 		}
 

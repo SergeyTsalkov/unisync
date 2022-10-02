@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"unisync/commands"
+	"unisync/config"
 	"unisync/filelist"
 	"unisync/node"
 )
@@ -32,6 +33,8 @@ func (server *Server) path(path string) string {
 }
 
 func (server *Server) Run() error {
+	config.IsServer = true
+
 	for {
 		line, err := server.in.ReadString('\n')
 		if err != nil {
@@ -143,7 +146,7 @@ func (server *Server) handleMKDIR(json string) error {
 
 	for _, dir := range args.Dirs {
 		fullpath := server.path(dir.Path)
-		err := os.MkdirAll(fullpath, 0755)
+		err := os.Mkdir(fullpath, dir.Mode)
 		if err != nil {
 			return err
 		}

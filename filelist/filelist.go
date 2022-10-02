@@ -2,14 +2,17 @@ package filelist
 
 import (
 	"io/fs"
+	"os"
 	"path/filepath"
+	"runtime"
 )
 
 type FileListItem struct {
-	Path       string `json:"path"`
-	Size       int64  `json:"size"`
-	IsDir      bool   `json:"is_dir"`
-	ModifiedAt int64  `json:"modified_at"`
+	Path       string      `json:"path"`
+	Size       int64       `json:"size"`
+	IsDir      bool        `json:"is_dir"`
+	ModifiedAt int64       `json:"modified_at"`
+	Mode       fs.FileMode `json:"mode,omitempty"`
 }
 
 type FileList []*FileListItem
@@ -35,10 +38,15 @@ func Make(basepath string) (FileList, error) {
 		}
 
 		item := &FileListItem{
-			Path:       filepath.ToSlash(relpath),
-			IsDir:      info.IsDir(),
-			Size:       info.Size(),
-			ModifiedAt: info.ModTime().Unix(),
+			Path:  filepath.ToSlash(relpath),
+			IsDir: info.IsDir(),
+		}
+		if !item.IsDir {
+			item.Size = info.Size()
+			item.ModifiedAt = info.ModTime().Unix()
+		}
+		if runtime.GOOS != "windows" {
+			item.Mode = info.Mode().Perm()
 		}
 
 		list = append(list, item)
@@ -50,6 +58,11 @@ func Make(basepath string) (FileList, error) {
 	}
 
 	return list, nil
+}
+
+func ModeMask(baseMode, newMode, mask os.FileMode) os.FileMode {
+	mode := newMode&mask | baseMode&(^mask)
+	return mode.Perm()
 }
 
 // func (list FileList) Encode() []byte {

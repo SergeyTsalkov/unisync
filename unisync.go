@@ -15,11 +15,6 @@ func main() {
 	sshClientFlag := flag.Bool("client", true, "connect through ssh to a remote unisync server")
 	flag.Parse()
 
-	err := config.Parse("test.json")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	if *stdServerFlag {
 		runServer()
 
@@ -41,8 +36,13 @@ func runServer() {
 }
 
 func runClient() {
+	err := config.Parse("test.json")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	sshc := sshclient.New(config.C.Host)
-	err := sshc.Run()
+	err = sshc.Run()
 	if err != nil {
 		log.Fatalln(err)
 	}
