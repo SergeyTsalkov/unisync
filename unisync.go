@@ -48,9 +48,6 @@ func runClient() {
 	}
 
 	c := client.New(sshc.Out, sshc.In)
-	c.LocalPath = config.C.Local
-	c.RemotePath = config.C.Remote
-
 	err = c.RunHello()
 	if err != nil {
 		log.Fatalln(err)

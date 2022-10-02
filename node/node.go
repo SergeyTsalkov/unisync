@@ -1,17 +1,28 @@
 package node
 
 import (
+	"bufio"
+	"io"
 	"log"
 	"path/filepath"
 )
 
 var Buffer = make([]byte, 1000000)
 
-func Path(basepath, path string) string {
-	if basepath == "" {
+type Node struct {
+	Basepath string
+	In       *bufio.Reader
+	Out      io.Writer
+	Debug    bool
+}
+
+func (n *Node) Path(path string) string {
+	if n.Basepath == "" {
 		log.Fatalln("basepath is not set")
 	}
 
 	path = filepath.FromSlash(path)
-	return filepath.Clean(filepath.Join(basepath, path))
+	path = filepath.Join(n.Basepath, path)
+	path = filepath.Clean(path)
+	return path
 }

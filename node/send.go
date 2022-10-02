@@ -8,7 +8,8 @@ import (
 	"unisync/commands"
 )
 
-func SendFile(output *Writer, path, filename string) error {
+func (n *Node) SendFile(path string) error {
+	filename := n.Path(path)
 	info, err := os.Lstat(filename)
 	if err != nil {
 		return err
@@ -31,7 +32,7 @@ func SendFile(output *Writer, path, filename string) error {
 	more := true
 
 	for more {
-		n, err := file.Read(Buffer)
+		len, err := file.Read(Buffer)
 		if err == io.EOF {
 			more = false
 		} else if err != nil {
@@ -40,13 +41,13 @@ func SendFile(output *Writer, path, filename string) error {
 
 		push := &commands.Push{
 			Path:       path,
-			Length:     int64(n),
+			Length:     int64(len),
 			ModifiedAt: info.ModTime().Unix(),
 			Mode:       info.Mode().Perm(),
 			More:       more,
 		}
 
-		err = output.SendCmdBuf(push, Buffer[0:n])
+		err = n.SendCmdBuf(push, Buffer[0:len])
 		if err != nil {
 			return err
 		}

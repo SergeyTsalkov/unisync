@@ -6,36 +6,29 @@ import (
 	"io"
 	"strings"
 	"unisync/commands"
+	"unisync/config"
 	"unisync/filelist"
 	"unisync/node"
 )
 
 type Client struct {
-	version int
-	in      *bufio.Reader
-	out     *node.Writer
-
-	LocalPath  string
-	RemotePath string
+	*node.Node
 }
 
 func New(in io.Reader, out io.Writer) *Client {
-	writer := node.NewWriter(out)
-	writer.Debug = true
-
-	return &Client{
-		in:  bufio.NewReader(in),
-		out: writer,
+	node := &node.Node{
+		Basepath: config.C.Local,
+		In:       bufio.NewReader(in),
+		Out:      out,
+		Debug:    true,
 	}
-}
 
-func (c *Client) path(path string) string {
-	return node.Path(c.LocalPath, path)
+	return &Client{node}
 }
 
 func (c *Client) RunHello() error {
-	cmd := &commands.Hello{c.RemotePath}
-	err := c.Send(cmd)
+	cmd := &commands.Hello{config.C.Remote}
+	err := c.SendCmd(cmd)
 	if err != nil {
 		return err
 	}
@@ -46,7 +39,7 @@ func (c *Client) RunHello() error {
 
 func (c *Client) RunReqList() (filelist.FileList, error) {
 	cmd := &commands.ReqList{}
-	err := c.Send(cmd)
+	err := c.SendCmd(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -65,15 +58,11 @@ func (c *Client) RunReqList() (filelist.FileList, error) {
 	return reply.FileList, nil
 }
 
-func (c *Client) Send(cmd commands.Command) error {
-	return c.out.SendCmd(cmd)
-}
-
 func (c *Client) GetCommand() (cmd string, json string, err error) {
 	var line string
 
 	for {
-		line, err = c.in.ReadString('\n')
+		line, err = c.In.ReadString('\n')
 		if err != nil {
 			return
 		}

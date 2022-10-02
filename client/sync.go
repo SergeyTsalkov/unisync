@@ -16,7 +16,7 @@ func (c *Client) Sync() error {
 		return err
 	}
 
-	localList, err := filelist.Make(c.LocalPath)
+	localList, err := filelist.Make(c.Basepath)
 	if err != nil {
 		return err
 	}
@@ -24,7 +24,7 @@ func (c *Client) Sync() error {
 	syncplan := filelist.Sync2Way(localList, remoteList)
 
 	for _, file := range syncplan.LocalMkdir {
-		fullpath := c.path(file.Path)
+		fullpath := c.Path(file.Path)
 		err := os.Mkdir(fullpath, file.Mode)
 		if err != nil {
 			return err
@@ -40,7 +40,7 @@ func (c *Client) Sync() error {
 			mkdir.Dirs[i] = &commands.MkdirAction{Path: file.Path, Mode: file.Mode}
 		}
 
-		err = c.Send(mkdir)
+		err = c.SendCmd(mkdir)
 		if err != nil {
 			return err
 		}
@@ -52,7 +52,7 @@ func (c *Client) Sync() error {
 	}
 
 	for _, file := range syncplan.Push {
-		err = node.SendFile(c.out, file.Path, c.path(file.Path))
+		err = c.SendFile(file.Path)
 		if err != nil {
 			log.Println(err)
 		}
@@ -69,7 +69,7 @@ func (c *Client) Sync() error {
 			paths[file.Path] = file
 		}
 
-		err = c.Send(pull)
+		err = c.SendCmd(pull)
 		if err != nil {
 			return err
 		}
@@ -91,12 +91,12 @@ func (c *Client) Sync() error {
 			}
 
 			buf := node.Buffer[0:push.Length]
-			_, err = io.ReadAtLeast(c.in, buf, len(buf))
+			_, err = io.ReadAtLeast(c.In, buf, len(buf))
 			if err != nil {
 				return err
 			}
 
-			done, err := node.ReceiveFile(c.path(push.Path), push, buf)
+			done, err := c.ReceiveFile(push, buf)
 			if err != nil {
 				return err
 			}

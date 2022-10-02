@@ -15,28 +15,23 @@ import (
 )
 
 type Server struct {
-	version  int
-	in       *bufio.Reader
-	out      *node.Writer
-	basepath string
+	*node.Node
 }
 
 func New(in io.Reader, out io.Writer) *Server {
-	return &Server{
-		in:  bufio.NewReader(in),
-		out: node.NewWriter(out),
+	node := &node.Node{
+		In:  bufio.NewReader(in),
+		Out: out,
 	}
+
+	return &Server{node}
 }
 
-func (server *Server) path(path string) string {
-	return node.Path(server.basepath, path)
-}
-
-func (server *Server) Run() error {
+func (s *Server) Run() error {
 	config.IsServer = true
 
 	for {
-		line, err := server.in.ReadString('\n')
+		line, err := s.In.ReadString('\n')
 		if err != nil {
 			return err
 		}
@@ -45,37 +40,37 @@ func (server *Server) Run() error {
 			continue
 		}
 
-		err = server.handle(line)
+		err = s.handle(line)
 		if err != nil {
 			if errors.Is(err, node.ErrDeep) {
 				return err
 			} else {
-				server.out.SendErr(err)
+				s.SendErr(err)
 			}
 		}
 	}
 }
 
-func (server *Server) handle(line string) error {
+func (s *Server) handle(line string) error {
 	words := strings.Fields(line)
 	cmd := strings.ToUpper(words[0])
 	json := strings.TrimSpace(strings.TrimPrefix(line, cmd))
 
-	if cmd != "HELLO" && server.version == 0 {
+	if cmd != "HELLO" && s.Basepath == "" {
 		return fmt.Errorf("must log in with HELLO first")
 	}
 
 	switch cmd {
 	case "HELLO":
-		return server.handleHELLO(json)
+		return s.handleHELLO(json)
 	case "REQLIST":
-		return server.handleREQLIST(json)
+		return s.handleREQLIST(json)
 	case "MKDIR":
-		return server.handleMKDIR(json)
+		return s.handleMKDIR(json)
 	case "PULL":
-		return server.handlePULL(json)
+		return s.handlePULL(json)
 	case "PUSH":
-		return server.handlePUSH(json)
+		return s.handlePUSH(json)
 	default:
 		return fmt.Errorf("invalid command")
 	}
@@ -83,14 +78,14 @@ func (server *Server) handle(line string) error {
 	return nil
 }
 
-func (server *Server) handleHELLO(json string) error {
-	args := &commands.Hello{}
-	err := commands.Parse(json, args)
+func (s *Server) handleHELLO(json string) error {
+	cmd := &commands.Hello{}
+	err := commands.Parse(json, cmd)
 	if err != nil {
 		return err
 	}
 
-	basepath := args.Basepath
+	basepath := cmd.Basepath
 	basepath = filepath.Clean(basepath)
 
 	if !filepath.IsAbs(basepath) {
@@ -104,10 +99,9 @@ func (server *Server) handleHELLO(json string) error {
 		return fmt.Errorf("path is not a directory")
 	}
 
-	server.version = 1
-	server.basepath = basepath
+	s.Basepath = basepath
 
-	err = server.out.SendString("OK")
+	err = s.SendString("OK")
 	if err != nil {
 		return err
 	}
@@ -115,21 +109,20 @@ func (server *Server) handleHELLO(json string) error {
 	return nil
 }
 
-func (server *Server) handleREQLIST(json string) error {
-	args := &commands.ReqList{}
-	err := commands.Parse(json, args)
+func (s *Server) handleREQLIST(json string) error {
+	cmd := &commands.ReqList{}
+	err := commands.Parse(json, cmd)
 	if err != nil {
 		return err
 	}
 
-	list, err := filelist.Make(server.path(args.Path))
-
+	list, err := filelist.Make(s.Path(cmd.Path))
 	if err != nil {
 		return err
 	}
 
 	reply := &commands.ResList{list}
-	err = server.out.SendCmd(reply)
+	err = s.SendCmd(reply)
 	if err != nil {
 		return err
 	}
@@ -137,46 +130,46 @@ func (server *Server) handleREQLIST(json string) error {
 	return nil
 }
 
-func (server *Server) handleMKDIR(json string) error {
-	args := &commands.Mkdir{}
-	err := commands.Parse(json, args)
+func (s *Server) handleMKDIR(json string) error {
+	cmd := &commands.Mkdir{}
+	err := commands.Parse(json, cmd)
 	if err != nil {
 		return err
 	}
 
-	for _, dir := range args.Dirs {
-		fullpath := server.path(dir.Path)
+	for _, dir := range cmd.Dirs {
+		fullpath := s.Path(dir.Path)
 		err := os.Mkdir(fullpath, dir.Mode)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = server.out.SendString("OK")
+	err = s.SendString("OK")
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (server *Server) handlePULL(json string) error {
-	args := &commands.Pull{}
-	err := commands.Parse(json, args)
+func (s *Server) handlePULL(json string) error {
+	cmd := &commands.Pull{}
+	err := commands.Parse(json, cmd)
 	if err != nil {
 		return err
 	}
 
-	if len(args.Paths) == 0 {
+	if len(cmd.Paths) == 0 {
 		return fmt.Errorf("PULL command must specify at least 1 path")
 	}
 
-	for _, path := range args.Paths {
-		err = node.SendFile(server.out, path, server.path(path))
+	for _, path := range cmd.Paths {
+		err = s.SendFile(path)
 		if err != nil {
 			if errors.Is(err, node.ErrDeep) {
 				return err
 			} else {
-				server.out.SendPathErr(path, err)
+				s.SendPathErr(path, err)
 			}
 		}
 	}
@@ -184,20 +177,20 @@ func (server *Server) handlePULL(json string) error {
 	return nil
 }
 
-func (server *Server) handlePUSH(json string) error {
-	args := &commands.Push{}
-	err := commands.Parse(json, args)
+func (s *Server) handlePUSH(json string) error {
+	cmd := &commands.Push{}
+	err := commands.Parse(json, cmd)
 	if err != nil {
 		return err
 	}
 
-	buf := make([]byte, args.Length)
-	_, err = io.ReadAtLeast(server.in, buf, len(buf))
+	buf := make([]byte, cmd.Length)
+	_, err = io.ReadAtLeast(s.In, buf, len(buf))
 	if err != nil {
 		return err
 	}
 
-	_, err = node.ReceiveFile(server.path(args.Path), args, buf)
+	_, err = s.ReceiveFile(cmd, buf)
 	if err != nil {
 		return err
 	}

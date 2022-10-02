@@ -6,12 +6,12 @@ import (
 	"time"
 	"unisync/commands"
 	"unisync/config"
-	"unisync/filelist"
 )
 
 var receiving = map[string]*os.File{}
 
-func ReceiveFile(filename string, cmd *commands.Push, buf []byte) (done bool, err error) {
+func (n *Node) ReceiveFile(cmd *commands.Push, buf []byte) (done bool, err error) {
+	filename := n.Path(cmd.Path)
 	file := receiving[filename]
 	done = !cmd.More
 
@@ -21,10 +21,10 @@ func ReceiveFile(filename string, cmd *commands.Push, buf []byte) (done bool, er
 
 		// if we're the server, just trust the mode sent by client
 		// if we're the client, filter given mode through ModeMask
-		if !config.IsServer {
-			mask := config.C.Chmod.Mask.Perm()
-			mode = filelist.ModeMask(fileMode(filename), mode, mask)
-		}
+		// if !config.IsServer {
+		// 	mask := config.C.Chmod.Mask.Perm()
+		// 	mode = filelist.ModeMask(fileMode(filename), mode, mask)
+		// }
 
 		file, err = os.Create(filename)
 		if err != nil {
