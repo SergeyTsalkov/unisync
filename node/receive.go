@@ -17,13 +17,9 @@ func (n *Node) ReceiveFile(cmd *commands.Push, buf []byte) (done bool, err error
 	// starting to receive a file
 	if file == nil {
 		mode := cmd.Mode
-
-		// if we're the server, just trust the mode sent by client
-		// if we're the client, filter given mode through ModeMask
-		// if !config.IsServer {
-		// 	mask := config.C.Chmod.Mask.Perm()
-		// 	mode = filelist.ModeMask(fileMode(filename), mode, mask)
-		// }
+		baseMode := n.fileMode(filename)
+		mask := n.Config.Chmod.Mask.Perm()
+		mode = modeMask(baseMode, mode, mask)
 
 		file, err = os.Create(filename)
 		if err != nil {
@@ -51,17 +47,3 @@ func (n *Node) ReceiveFile(cmd *commands.Push, buf []byte) (done bool, err error
 
 	return
 }
-
-// returns filemode, or default mode if file doesn't exist
-// only works in client context
-// func fileMode(filename string) os.FileMode {
-// 	if config.IsServer {
-// 		log.Fatalln("fileMode() should not be called from server")
-// 	}
-
-// 	info, err := os.Lstat(filename)
-// 	if err != nil {
-// 		return config.C.Chmod.Local.Perm()
-// 	}
-// 	return info.Mode().Perm()
-// }

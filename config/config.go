@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -16,18 +17,39 @@ type Config struct {
 	Remote string `json:"remote"`
 	Host   string `json:"host"`
 	Method string `json:"method"`
-	Prefer string `json:"prefer'`
+	Prefer string `json:"prefer"'`
 
 	Chmod *configTypeChmod `json:"chmod"`
 }
 
 type configTypeChmod struct {
-	Local     *fs.FileMode `json:"local"`
-	LocalDir  *fs.FileMode `json:"local_dir"`
-	Remote    *fs.FileMode `json:"remote"`
-	RemoteDir *fs.FileMode `json:"remote_dir"`
-	Mask      *fs.FileMode `json:"mask"`
-	DirMask   *fs.FileMode `json:"dir_mask`
+	Local     *FileMode `json:"local,omitempty"`
+	LocalDir  *FileMode `json:"local_dir,omitempty"`
+	Remote    *FileMode `json:"remote,omitempty"`
+	RemoteDir *FileMode `json:"remote_dir,omitempty"`
+	Mask      *FileMode `json:"mask,omitempty"`
+	DirMask   *FileMode `json:"dir_mask,omitempty"`
+}
+
+type FileMode struct {
+	fs.FileMode
+}
+
+func (f *FileMode) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := json.Unmarshal(b, &str); err != nil {
+		return err
+	}
+	i, err := strconv.ParseUint(str, 8, 32)
+	if err != nil {
+		return err
+	}
+	f.FileMode = fs.FileMode(i)
+	return nil
+}
+
+func (f *FileMode) MarshalJSON() ([]byte, error) {
+	return json.Marshal(strconv.FormatUint(uint64(f.Perm()), 8))
 }
 
 var once sync.Once
@@ -79,27 +101,23 @@ func (C *Config) Validate() {
 	}
 
 	if C.Chmod.Local == nil {
-		C.Chmod.Local = makeMode(0644)
+		C.Chmod.Local = &FileMode{0644}
 	}
 	if C.Chmod.LocalDir == nil {
-		C.Chmod.LocalDir = makeMode(0755)
+		C.Chmod.LocalDir = &FileMode{0755}
 	}
 	if C.Chmod.Remote == nil {
-		C.Chmod.Remote = makeMode(0644)
+		C.Chmod.Remote = &FileMode{0644}
 	}
 	if C.Chmod.RemoteDir == nil {
-		C.Chmod.RemoteDir = makeMode(0755)
+		C.Chmod.RemoteDir = &FileMode{0755}
 	}
 	if C.Chmod.Mask == nil {
-		C.Chmod.Mask = makeMode(0100)
+		C.Chmod.Mask = &FileMode{0100}
 	}
 	if C.Chmod.DirMask == nil {
-		C.Chmod.DirMask = makeMode(0)
+		C.Chmod.DirMask = &FileMode{0}
 	}
-}
-
-func makeMode(mode fs.FileMode) *fs.FileMode {
-	return &mode
 }
 
 func ConfigDir() string {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"unisync/commands"
 	"unisync/filelist"
 	"unisync/node"
@@ -25,8 +24,7 @@ func (c *Client) Sync() error {
 	syncplan := b.BuildSyncPlan(localList, remoteList)
 
 	for _, file := range syncplan.LocalMkdir {
-		fullpath := c.Path(file.Path)
-		err := os.Mkdir(fullpath, file.Mode)
+		err := c.Mkdir(file.Path, file.Mode)
 		if err != nil {
 			return err
 		}
@@ -45,7 +43,32 @@ func (c *Client) Sync() error {
 		if err != nil {
 			return err
 		}
+		_, err = c.WaitFor("OK")
+		if err != nil {
+			return err
+		}
+	}
 
+	for _, file := range syncplan.LocalChmod {
+		err := c.Chmod(file.Path, file.Mode)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(syncplan.RemoteChmod) > 0 {
+		chmod := &commands.Chmod{
+			Actions: make([]*commands.ChmodAction, len(syncplan.RemoteChmod)),
+		}
+
+		for i, file := range syncplan.RemoteChmod {
+			chmod.Actions[i] = &commands.ChmodAction{Path: file.Path, Mode: file.Mode}
+		}
+
+		err = c.SendCmd(chmod)
+		if err != nil {
+			return err
+		}
 		_, err = c.WaitFor("OK")
 		if err != nil {
 			return err

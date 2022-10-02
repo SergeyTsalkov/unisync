@@ -19,8 +19,9 @@ type Server struct {
 
 func New(in io.Reader, out io.Writer) *Server {
 	node := &node.Node{
-		In:  bufio.NewReader(in),
-		Out: out,
+		In:       bufio.NewReader(in),
+		Out:      out,
+		IsServer: true,
 	}
 
 	return &Server{node}
@@ -64,6 +65,8 @@ func (s *Server) handle(line string) error {
 		return s.handleREQLIST(json)
 	case "MKDIR":
 		return s.handleMKDIR(json)
+	case "CHMOD":
+		return s.handleCHMOD(json)
 	case "PULL":
 		return s.handlePULL(json)
 	case "PUSH":
@@ -82,9 +85,10 @@ func (s *Server) handleHELLO(json string) error {
 		return err
 	}
 
-	basepath := cmd.Basepath
-	basepath = filepath.Clean(basepath)
+	s.Config = cmd.Config
+	s.Config.Validate()
 
+	basepath := s.Config.Remote
 	if !filepath.IsAbs(basepath) {
 		return fmt.Errorf("path must be absolute")
 	}
@@ -135,8 +139,28 @@ func (s *Server) handleMKDIR(json string) error {
 	}
 
 	for _, dir := range cmd.Dirs {
-		fullpath := s.Path(dir.Path)
-		err := os.Mkdir(fullpath, dir.Mode)
+		err := s.Mkdir(dir.Path, dir.Mode)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = s.SendString("OK")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) handleCHMOD(json string) error {
+	cmd := &commands.Chmod{}
+	err := commands.Parse(json, cmd)
+	if err != nil {
+		return err
+	}
+
+	for _, action := range cmd.Actions {
+		err := s.Chmod(action.Path, action.Mode)
 		if err != nil {
 			return err
 		}

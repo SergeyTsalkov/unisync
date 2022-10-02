@@ -28,7 +28,7 @@ func New(in io.Reader, out io.Writer, config *config.Config) *Client {
 }
 
 func (c *Client) RunHello() error {
-	cmd := &commands.Hello{c.Config.Remote}
+	cmd := &commands.Hello{c.Config}
 	err := c.SendCmd(cmd)
 	if err != nil {
 		return err

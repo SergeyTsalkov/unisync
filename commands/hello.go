@@ -1,7 +1,9 @@
 package commands
 
+import "unisync/config"
+
 type Hello struct {
-	Basepath string `json:"basepath"`
+	Config *config.Config `json:"config"`
 }
 
 func (c *Hello) CmdType() string {

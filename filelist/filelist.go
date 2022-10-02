@@ -2,7 +2,6 @@ package filelist
 
 import (
 	"io/fs"
-	"os"
 	"path/filepath"
 	"runtime"
 )
@@ -58,11 +57,6 @@ func Make(basepath string) (FileList, error) {
 	}
 
 	return list, nil
-}
-
-func ModeMask(baseMode, newMode, mask os.FileMode) os.FileMode {
-	mode := newMode&mask | baseMode&(^mask)
-	return mode.Perm()
 }
 
 // func (list FileList) Encode() []byte {

@@ -1,6 +1,6 @@
 package commands
 
-import "os"
+import "io/fs"
 
 type Mkdir struct {
 	Dirs []*MkdirAction `json:"dirs"`
@@ -8,7 +8,7 @@ type Mkdir struct {
 
 type MkdirAction struct {
 	Path string      `json:"path"`
-	Mode os.FileMode `json:"mode"`
+	Mode fs.FileMode `json:"mode"`
 }
 
 func (c *Mkdir) CmdType() string {
