@@ -16,41 +16,29 @@ example:
   unisync ~/localpath user@host:remotepath/
   unisync myhost.json
 
-2-way sync:
-  compare local & remote
-
-  if they're not dirs AND size or mtime differs:
-    - config.prefer wins
-
-  otherwise, if mode&mask differs
-    - if modes are different, config.prefer wins
 
 
-4-way sync:
-  -> save cache as configname.cache, or md5(local,remote,host)
-  compare local & remote (with caches)
-  if one side is dirty, that side wins
-  if both sides are dirty (or clean), then config.prefer wins
-  if one side's modes are dirty, that side wins chmod
+TODO:
+  - send.go shouldn't send mode on Windows
+  - handle fswatch events on both sides
+  - work without config file, from command line; choose cache name intelligently
+  - cache should remember (local,remote,ip) (will have to ask server to expand remote basepath)
+    dump cache if any of those change, or if we have trouble parsing cache
 
-Problem with 2-way sync:
-  - what if client deletes file? server will put it back
-    -> SOLUTION: cache can detect deleted file as "event" with a particular mtime
+  - write to tmpfile in same dir, rename on finish, delete on error
+    .unisync-tmp-[randomstring]
+    (delete these files when syncing, just in case)
 
-  - what if server clock is 5 minutes ahead of client clock?
-    - client edits file, server version is still ahead and overwrites it
-    -> SOLUTION: client remembers both local and remote caches (should be the same, aside from modes if one is Windows)
+  - progress bar, nicer-looking console progress on sync
+    maybe send PROGRESS {path: bigfile.txt, progress: 5} every second if receiving file takes more than 1 second
+    will need to send size as part of PUSH so other side knows expected file size (even if it's not guaranteed)
+    <- thisfile.txt
+    -> somedir/thatfile.txt
+    <- DEL otherfile.txt
+    -> CHMOD asfasf.txt rw-r--r--
+    <- [5%] bigfile.txt
 
-  - what if a file on one side is a dir name on the other?
-    -> SOLUTION: a dir's effective mtime is the max mtime of a file underneath it; compare to file to determine winner
-
-  - what if one side is Windows, and has no file modes?
-    -> SOLUTION: don't set FileMode for FileListItem's on Windows (set to nil)
-       comparison functions won't handle chmod if one side is missing modes
-
-  - what if file push starts but doesn't finish?
-    -> SOLUTION: use tmp files to hold files that will then be moved into position
-       - if those files are put in the same working dir, make sure we don't accidentally try syncing them later
+    - 
 
 
        

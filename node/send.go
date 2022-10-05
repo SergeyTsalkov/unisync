@@ -30,11 +30,12 @@ func (n *Node) SendFile(path string) error {
 	}()
 
 	more := true
-
+	offset := int64(0)
 	for more {
-		len, err := file.Read(Buffer)
+		len, err := file.ReadAt(Buffer, offset)
 		if err == io.EOF {
 			more = false
+			err = nil
 		} else if err != nil {
 			return &DeepError{err}
 		}
@@ -51,6 +52,8 @@ func (n *Node) SendFile(path string) error {
 		if err != nil {
 			return err
 		}
+
+		offset += int64(len)
 	}
 
 	return nil
