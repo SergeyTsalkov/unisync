@@ -15,67 +15,96 @@ func NewSyncPlanBuilder(config *config.Config) *SyncPlanBuilder {
 	return &SyncPlanBuilder{Config: config}
 }
 
-func (b *SyncPlanBuilder) BuildSyncPlan(localList, remoteList FileList) *SyncPlan {
+func (b *SyncPlanBuilder) BuildSyncPlan(localList, remoteList, cacheList FileList) *SyncPlan {
 	b.Plan = NewSyncPlan()
-	index := indexFileList(localList, remoteList)
+	index := indexFileList(localList, remoteList, cacheList)
 
 	for _, lists := range index {
-		b.compare2Way(lists.local, lists.remote)
+		b.compare(lists.local, lists.remote, lists.cache)
 	}
 
 	b.Plan.Clean()
 	return b.Plan
 }
 
-func (b *SyncPlanBuilder) compare2Way(local, remote *FileListItem) {
-	if local == nil && remote == nil {
-		log.Fatalln("local and remote cannot both be nil")
+func (b *SyncPlanBuilder) compare(local, remote, cache *FileListItem) {
+	plan := b.Plan
+	if itemsMatch(local, remote) {
+		// either both sides match, or both have been deleted since the cache was taken
+		// either way, there's nothing to sync
+		return
 	}
 
-	if remote == nil {
+	bothSidesExist := local != nil && remote != nil
+
+	// side can be dirty if cache exists and mismatches (because side was either changed or deleted)
+	// side can be dirty if cache doesn't exist, but the file does (because we have no cache, or file was recently created)
+	isLocalDirty := !itemsMatch(local, cache)
+	isRemoteDirty := !itemsMatch(remote, cache)
+
+	// mode can only be dirty if cache exists, and the relevant parts of mode don't match
+	// if one side is Windows and has no mode, we say that modes always "match" and are never dirty
+	isLocalModeDirty := !b.itemModesMatch(local, cache)
+	isRemoteModeDirty := !b.itemModesMatch(remote, cache)
+
+	if bothSidesExist && local.IsDir != remote.IsDir {
+		// if one side is a directory and the other side isn't, keep the directory
 		if local.IsDir {
-			b.Plan.Mkdir(false, local)
+			plan.DelRemote(remote)
 		} else {
-			b.Plan.Sync(false, local)
+			plan.DelLocal(local)
 		}
 
-		return
-	}
+	} else if isLocalDirty && !isRemoteDirty {
+		// if there is a cache, one side matches it and the other doesn't (the mismatched side might have been deleted, too)
+		// if there is no cache, the dirty side exists and the clean side doesn't
 
-	if local == nil {
-		if remote.IsDir {
-			b.Plan.Mkdir(true, remote)
+		if local != nil {
+			plan.Push(local)
 		} else {
-			b.Plan.Sync(true, remote)
+			plan.DelRemote(remote)
 		}
 
-		return
-	}
+	} else if isRemoteDirty && !isLocalDirty {
+		if remote != nil {
+			plan.Pull(remote)
+		} else {
+			plan.DelLocal(local)
+		}
 
-	isSame := local.ModifiedAt == remote.ModifiedAt && local.Size == remote.Size
-	isDirMismatch := local.IsDir != remote.IsDir
+	} else if isLocalDirty && isRemoteDirty {
+		// if there is a cache, both sides might have been changed (or one could have been changed and the other deleted)
+		// if there is no cache, both sides exist and we need to pick a winner
 
-	if isDirMismatch {
-		// TODO: figure this out
-
-	} else if !local.IsDir && !isSame {
 		if b.preferLocal(local, remote) {
-			b.Plan.Sync(false, local)
+			plan.Push(local)
 		} else {
-			b.Plan.Sync(true, remote)
+			plan.Pull(remote)
 		}
+	} else if isLocalModeDirty && !isRemoteModeDirty {
+		plan.ChmodRemote(local)
 
-	} else if !b.compareModes(local, remote) {
+	} else if isRemoteModeDirty && !isLocalModeDirty {
+		plan.ChmodLocal(remote)
+
+	} else if !b.itemModesMatch(local, remote) {
 		if b.preferLocal(local, remote) {
-			b.Plan.Chmod(false, local)
+			plan.ChmodRemote(local)
 		} else {
-			b.Plan.Chmod(true, remote)
+			plan.ChmodLocal(remote)
 		}
 	}
 
 }
 
 func (b *SyncPlanBuilder) preferLocal(local, remote *FileListItem) bool {
+	if local == nil {
+		return false
+	}
+	if remote == nil {
+		return true
+	}
+
 	switch b.Config.Prefer {
 	case "newest":
 		return local.ModifiedAt >= remote.ModifiedAt
@@ -92,14 +121,17 @@ func (b *SyncPlanBuilder) preferLocal(local, remote *FileListItem) bool {
 	return true
 }
 
-func (b *SyncPlanBuilder) compareModes(local, remote *FileListItem) bool {
+func (b *SyncPlanBuilder) itemModesMatch(local, remote *FileListItem) bool {
+	if local == nil || remote == nil {
+		// if one side doesn't exist, let's say they match -- can't sync modes anyway
+		return true
+	}
+
 	localMode := local.Mode.Perm()
 	remoteMode := remote.Mode.Perm()
 
 	if localMode == 0 || remoteMode == 0 {
-		return true
-	}
-	if local.IsDir != remote.IsDir {
+		// if one side is Windows and has no modes, let's say they match -- can't sync modes anyway
 		return true
 	}
 
@@ -113,4 +145,20 @@ func (b *SyncPlanBuilder) compareModes(local, remote *FileListItem) bool {
 	localMode = localMode & mask
 	remoteMode = remoteMode & mask
 	return localMode == remoteMode
+}
+
+func itemsMatch(item, item2 *FileListItem) bool {
+	if item == nil && item2 == nil {
+		return true
+	}
+	if item == nil || item2 == nil {
+		return false
+	}
+	if item.IsDir && item2.IsDir {
+		return true
+	}
+
+	return !item.IsDir && !item2.IsDir &&
+		item.Size == item2.Size &&
+		item.ModifiedAt == item2.ModifiedAt
 }

@@ -13,6 +13,7 @@ import (
 
 type Client struct {
 	*node.Node
+	cache filelist.FileList
 }
 
 func New(in io.Reader, out io.Writer, config *config.Config) *Client {
@@ -24,7 +25,7 @@ func New(in io.Reader, out io.Writer, config *config.Config) *Client {
 		Config:   config,
 	}
 
-	return &Client{node}
+	return &Client{Node: node}
 }
 
 func (c *Client) RunHello() error {

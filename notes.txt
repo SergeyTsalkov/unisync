@@ -53,17 +53,7 @@ Problem with 2-way sync:
        - if those files are put in the same working dir, make sure we don't accidentally try syncing them later
 
 
+       
 
-applying chmod:
-  - mkdir
-  - chmod
-  - push/pull
-
-  - how to apply modes to server?
-    Option 1: client is only one aware of config rules, does chmod/push with modes pre-adjusted based on rules
-      - when receiving pushes, adjusts received mode based on rules
-
-    Option 2: client and server both aware of config rules
-      - chmod/push is sent with proper modes (based on what file has on other side), receiver adjusts based on rules
 
 

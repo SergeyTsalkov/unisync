@@ -4,9 +4,10 @@ type IndexedFileList map[string]*IndexedFileItem
 type IndexedFileItem struct {
 	local  *FileListItem
 	remote *FileListItem
+	cache  *FileListItem
 }
 
-func indexFileList(local, remote FileList) IndexedFileList {
+func indexFileList(local, remote, cache FileList) IndexedFileList {
 	index := make(IndexedFileList)
 
 	for _, file := range local {
@@ -22,6 +23,13 @@ func indexFileList(local, remote FileList) IndexedFileList {
 		}
 
 		index[file.Path].remote = file
+	}
+	for _, file := range cache {
+		if index[file.Path] == nil {
+			index[file.Path] = &IndexedFileItem{}
+		}
+
+		index[file.Path].cache = file
 	}
 
 	return index

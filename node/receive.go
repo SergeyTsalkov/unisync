@@ -16,10 +16,13 @@ func (n *Node) ReceiveFile(cmd *commands.Push, buf []byte) (done bool, err error
 
 	// starting to receive a file
 	if file == nil {
-		mode := cmd.Mode
-		baseMode := n.fileMode(filename)
-		mask := n.Config.Chmod.Mask.Perm()
-		mode = modeMask(baseMode, mode, mask)
+		mode := n.fileMode(filename)
+
+		// if we got a mode of 0 (the sending side is Windows), just keep the mode we have
+		if cmd.Mode != 0 {
+			mask := n.Config.Chmod.Mask.Perm()
+			mode = modeMask(mode, cmd.Mode, mask)
+		}
 
 		file, err = os.Create(filename)
 		if err != nil {

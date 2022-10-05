@@ -2,25 +2,25 @@ package commands
 
 import "unisync/filelist"
 
-type Pull struct {
+type Del struct {
 	Paths []string `json:"paths"`
 }
 
-func (c *Pull) CmdType() string {
-	return "PULL"
+func (c *Del) CmdType() string {
+	return "DEL"
 }
 
-func MakePull(items []*filelist.FileListItem) *Pull {
+func MakeDel(items []*filelist.FileListItem) *Del {
 	if len(items) == 0 {
 		return nil
 	}
 
-	pull := &Pull{
+	del := &Del{
 		Paths: make([]string, len(items)),
 	}
 	for i, item := range items {
-		pull.Paths[i] = item.Path
+		del.Paths[i] = item.Path
 	}
 
-	return pull
+	return del
 }

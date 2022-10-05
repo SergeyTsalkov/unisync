@@ -13,6 +13,7 @@ import (
 )
 
 type Config struct {
+	Name   string `json:"name"`
 	Local  string `json:"local"`
 	Remote string `json:"remote"`
 	Host   string `json:"host"`
@@ -81,6 +82,7 @@ func Parse(path string) (*Config, error) {
 		return nil, fmt.Errorf("Unable to parse ConfigFile %v: %v", path, err)
 	}
 
+	_, config.Name = filepath.Split(path)
 	config.Validate()
 	return config, nil
 }

@@ -1,6 +1,9 @@
 package commands
 
-import "io/fs"
+import (
+  "io/fs"
+  "unisync/filelist"
+)
 
 type Chmod struct {
   Actions []*ChmodAction `json:"actions"`
@@ -13,4 +16,19 @@ type ChmodAction struct {
 
 func (c *Chmod) CmdType() string {
   return "CHMOD"
+}
+
+func MakeChmod(items []*filelist.FileListItem) *Chmod {
+  if len(items) == 0 {
+    return nil
+  }
+
+  chmod := &Chmod{
+    Actions: make([]*ChmodAction, len(items)),
+  }
+  for i, item := range items {
+    chmod.Actions[i] = &ChmodAction{Path: item.Path, Mode: item.Mode}
+  }
+
+  return chmod
 }

@@ -67,6 +67,8 @@ func (s *Server) handle(line string) error {
 		return s.handleMKDIR(json)
 	case "CHMOD":
 		return s.handleCHMOD(json)
+	case "DEL":
+		return s.handleDEL(json)
 	case "PULL":
 		return s.handlePULL(json)
 	case "PUSH":
@@ -161,6 +163,27 @@ func (s *Server) handleCHMOD(json string) error {
 
 	for _, action := range cmd.Actions {
 		err := s.Chmod(action.Path, action.Mode)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = s.SendString("OK")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) handleDEL(json string) error {
+	cmd := &commands.Del{}
+	err := commands.Parse(json, cmd)
+	if err != nil {
+		return err
+	}
+
+	for _, path := range cmd.Paths {
+		err := os.Remove(s.Path(path))
 		if err != nil {
 			return err
 		}

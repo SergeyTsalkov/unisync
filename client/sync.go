@@ -4,125 +4,125 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"os"
 	"unisync/commands"
 	"unisync/filelist"
 	"unisync/node"
 )
 
-func (c *Client) Sync() error {
+func (c *Client) Sync() (bool, error) {
 	remoteList, err := c.RunReqList()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	localList, err := filelist.Make(c.Basepath)
 	if err != nil {
-		return err
+		return false, err
+	}
+
+	cacheList, err := c.Cache()
+	if err != nil {
+		return false, err
 	}
 
 	b := filelist.NewSyncPlanBuilder(c.Config)
-	syncplan := b.BuildSyncPlan(localList, remoteList)
+	syncplan := b.BuildSyncPlan(localList, remoteList, cacheList)
+
+	if syncplan.IsSynced() {
+		err = c.SaveCache(localList)
+		return true, err
+	}
+
+	for _, file := range syncplan.LocalDel {
+		err := os.Remove(file.Path)
+		if err != nil {
+			return false, err
+		}
+	}
 
 	for _, file := range syncplan.LocalMkdir {
 		err := c.Mkdir(file.Path, file.Mode)
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	if len(syncplan.RemoteMkdir) > 0 {
-		mkdir := &commands.Mkdir{
-			Dirs: make([]*commands.MkdirAction, len(syncplan.RemoteMkdir)),
-		}
-
-		for i, file := range syncplan.RemoteMkdir {
-			mkdir.Dirs[i] = &commands.MkdirAction{Path: file.Path, Mode: file.Mode}
-		}
-
+		mkdir := commands.MakeMkdir(syncplan.RemoteMkdir)
 		err = c.SendCmd(mkdir)
 		if err != nil {
-			return err
+			return false, err
 		}
 		_, err = c.WaitFor("OK")
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	for _, file := range syncplan.LocalChmod {
 		err := c.Chmod(file.Path, file.Mode)
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
 
 	if len(syncplan.RemoteChmod) > 0 {
-		chmod := &commands.Chmod{
-			Actions: make([]*commands.ChmodAction, len(syncplan.RemoteChmod)),
-		}
-
-		for i, file := range syncplan.RemoteChmod {
-			chmod.Actions[i] = &commands.ChmodAction{Path: file.Path, Mode: file.Mode}
-		}
-
+		chmod := commands.MakeChmod(syncplan.RemoteChmod)
 		err = c.SendCmd(chmod)
 		if err != nil {
-			return err
+			return false, err
 		}
 		_, err = c.WaitFor("OK")
 		if err != nil {
-			return err
+			return false, err
 		}
 	}
 
-	for _, file := range syncplan.Push {
+	for _, file := range syncplan.PushFile {
 		err = c.SendFile(file.Path)
 		if err != nil {
 			log.Println(err)
 		}
 	}
 
-	if len(syncplan.Pull) > 0 {
+	if len(syncplan.PullFile) > 0 {
 		paths := map[string]bool{}
-		pull := &commands.Pull{
-			Paths: make([]string, len(syncplan.Pull)),
-		}
-
-		for i, file := range syncplan.Pull {
-			pull.Paths[i] = file.Path
+		for _, file := range syncplan.PullFile {
 			paths[file.Path] = true
 		}
 
+		pull := commands.MakePull(syncplan.PullFile)
 		err = c.SendCmd(pull)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		for len(paths) > 0 {
 			json, err := c.WaitFor("PUSH")
 			if err != nil {
-				return err
+				return false, err
 			}
 
 			push := &commands.Push{}
 			err = commands.Parse(json, push)
 			if err != nil {
-				return err
+				return false, err
 			}
 
 			if push.Length > int64(len(node.Buffer)) {
-				return fmt.Errorf("Buffer length is %v, but needs to be at least %v", len(node.Buffer), push.Length)
+				return false, fmt.Errorf("Buffer length is %v, but needs to be at least %v", len(node.Buffer), push.Length)
 			}
 
 			buf := node.Buffer[0:push.Length]
 			_, err = io.ReadAtLeast(c.In, buf, len(buf))
 			if err != nil {
-				return err
+				return false, err
 			}
 
 			done, err := c.ReceiveFile(push, buf)
 			if err != nil {
-				return err
+				return false, err
 			}
 			if done {
 				delete(paths, push.Path)
@@ -131,5 +131,5 @@ func (c *Client) Sync() error {
 
 	}
 
-	return nil
+	return false, nil
 }
