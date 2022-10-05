@@ -19,7 +19,8 @@ example:
 
 
 TODO:
-  - send.go shouldn't send mode on Windows
+  - handle symlinks
+  - dump server connection on error, auto reconect and retry
   - handle fswatch events on both sides
   - work without config file, from command line; choose cache name intelligently
   - cache should remember (local,remote,ip) (will have to ask server to expand remote basepath)

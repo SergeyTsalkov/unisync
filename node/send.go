@@ -5,29 +5,33 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
 	"unisync/commands"
 )
 
 func (n *Node) SendFile(path string) error {
-	filename := n.Path(path)
-	info, err := os.Lstat(filename)
-	if err != nil {
-		return err
-	}
-	if info.IsDir() {
-		return fmt.Errorf("can not SEND %v: is a directory", filename)
-	}
-
-	file, err := os.Open(filename)
+	file, err := os.Open(n.Path(path))
 	if err != nil {
 		return err
 	}
 	defer func() {
 		err := file.Close()
 		if err != nil {
-			log.Fatalln("err closing file", filename, ":", err)
+			log.Fatalln("err closing file", path, ":", err)
 		}
 	}()
+	info, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return fmt.Errorf("can not SEND %v: is a directory", path)
+	}
+
+	mode := info.Mode().Perm()
+	if runtime.GOOS == "windows" {
+		mode = 0
+	}
 
 	more := true
 	offset := int64(0)
@@ -44,7 +48,7 @@ func (n *Node) SendFile(path string) error {
 			Path:       path,
 			Length:     int64(len),
 			ModifiedAt: info.ModTime().Unix(),
-			Mode:       info.Mode().Perm(),
+			Mode:       mode,
 			More:       more,
 		}
 
