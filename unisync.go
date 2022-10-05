@@ -53,12 +53,9 @@ func runClient() {
 		log.Fatalln(err)
 	}
 
-	for synced := false; !synced; {
-		var err error
-		synced, err = c.Sync()
-		if err != nil {
-			log.Fatalln(err)
-		}
+	err = c.Sync()
+	if err != nil {
+		log.Fatalln(err)
 	}
 
 }

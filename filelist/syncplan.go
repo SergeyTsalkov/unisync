@@ -73,7 +73,9 @@ func (plan *SyncPlan) IsSynced() bool {
 		len(plan.LocalMkdir) == 0 &&
 		len(plan.RemoteMkdir) == 0 &&
 		len(plan.LocalChmod) == 0 &&
-		len(plan.RemoteChmod) == 0
+		len(plan.RemoteChmod) == 0 &&
+		len(plan.LocalDel) == 0 &&
+		len(plan.RemoteDel) == 0
 }
 
 func (p *SyncPlan) Show() {

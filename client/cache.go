@@ -20,7 +20,7 @@ func (c *Client) Cache() (filelist.FileList, error) {
 			return nil, err
 		}
 
-		err = json.Unmarshal(bytes, c.cache)
+		err = json.Unmarshal(bytes, &c.cache)
 		if err != nil {
 			return nil, err
 		}

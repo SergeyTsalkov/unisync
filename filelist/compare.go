@@ -29,25 +29,15 @@ func (b *SyncPlanBuilder) BuildSyncPlan(localList, remoteList, cacheList FileLis
 
 func (b *SyncPlanBuilder) compare(local, remote, cache *FileListItem) {
 	plan := b.Plan
-	if itemsMatch(local, remote) {
-		// either both sides match, or both have been deleted since the cache was taken
-		// either way, there's nothing to sync
+
+	if local == nil && remote == nil {
+		// if local and remote don't exist, the file was deleted on both sides and is only known from the cache
+		// in this case, there's nothing to sync
+
 		return
 	}
 
-	bothSidesExist := local != nil && remote != nil
-
-	// side can be dirty if cache exists and mismatches (because side was either changed or deleted)
-	// side can be dirty if cache doesn't exist, but the file does (because we have no cache, or file was recently created)
-	isLocalDirty := !itemsMatch(local, cache)
-	isRemoteDirty := !itemsMatch(remote, cache)
-
-	// mode can only be dirty if cache exists, and the relevant parts of mode don't match
-	// if one side is Windows and has no mode, we say that modes always "match" and are never dirty
-	isLocalModeDirty := !b.itemModesMatch(local, cache)
-	isRemoteModeDirty := !b.itemModesMatch(remote, cache)
-
-	if bothSidesExist && local.IsDir != remote.IsDir {
+	if local != nil && remote != nil && local.IsDir != remote.IsDir {
 		// if one side is a directory and the other side isn't, keep the directory
 		if local.IsDir {
 			plan.DelRemote(remote)
@@ -55,43 +45,57 @@ func (b *SyncPlanBuilder) compare(local, remote, cache *FileListItem) {
 			plan.DelLocal(local)
 		}
 
-	} else if isLocalDirty && !isRemoteDirty {
-		// if there is a cache, one side matches it and the other doesn't (the mismatched side might have been deleted, too)
-		// if there is no cache, the dirty side exists and the clean side doesn't
+	} else if !itemsMatch(local, remote) {
+		// side can be dirty if cache exists and mismatches (because side was either changed or deleted)
+		// side can be dirty if cache doesn't exist, but the file does (because we have no cache, or file was recently created)
+		isLocalDirty := !itemsMatch(local, cache)
+		isRemoteDirty := !itemsMatch(remote, cache)
 
-		if local != nil {
-			plan.Push(local)
+		if isLocalDirty && !isRemoteDirty {
+			// if there is a cache, one side matches it and the other doesn't (the mismatched side might have been deleted, too)
+			// if there is no cache, the dirty side exists and the clean side doesn't
+
+			if local != nil {
+				plan.Push(local)
+			} else {
+				plan.DelRemote(remote)
+			}
+
+		} else if isRemoteDirty && !isLocalDirty {
+			if remote != nil {
+				plan.Pull(remote)
+			} else {
+				plan.DelLocal(local)
+			}
+
 		} else {
-			plan.DelRemote(remote)
+			// if there is a cache, both sides might have been changed (or one could have been changed and the other deleted)
+			// if there is no cache, both sides exist and we need to pick a winner
+
+			if b.preferLocal(local, remote) {
+				plan.Push(local)
+			} else {
+				plan.Pull(remote)
+			}
 		}
-
-	} else if isRemoteDirty && !isLocalDirty {
-		if remote != nil {
-			plan.Pull(remote)
-		} else {
-			plan.DelLocal(local)
-		}
-
-	} else if isLocalDirty && isRemoteDirty {
-		// if there is a cache, both sides might have been changed (or one could have been changed and the other deleted)
-		// if there is no cache, both sides exist and we need to pick a winner
-
-		if b.preferLocal(local, remote) {
-			plan.Push(local)
-		} else {
-			plan.Pull(remote)
-		}
-	} else if isLocalModeDirty && !isRemoteModeDirty {
-		plan.ChmodRemote(local)
-
-	} else if isRemoteModeDirty && !isLocalModeDirty {
-		plan.ChmodLocal(remote)
-
 	} else if !b.itemModesMatch(local, remote) {
-		if b.preferLocal(local, remote) {
+		// mode can only be dirty if cache exists, and the relevant parts of mode don't match
+		// if one side is Windows and has no mode, we say that modes always "match" and are never dirty
+		isLocalModeDirty := !b.itemModesMatch(local, cache)
+		isRemoteModeDirty := !b.itemModesMatch(remote, cache)
+
+		if isLocalModeDirty && !isRemoteModeDirty {
 			plan.ChmodRemote(local)
-		} else {
+
+		} else if isRemoteModeDirty && !isLocalModeDirty {
 			plan.ChmodLocal(remote)
+
+		} else {
+			if b.preferLocal(local, remote) {
+				plan.ChmodRemote(local)
+			} else {
+				plan.ChmodLocal(remote)
+			}
 		}
 	}
 
