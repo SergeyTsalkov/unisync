@@ -1,16 +1,19 @@
 package filelist
 
 import (
+	"encoding/json"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"runtime"
 )
 
 type FileListItem struct {
 	Path       string      `json:"path"`
-	Size       int64       `json:"size"`
-	IsDir      bool        `json:"is_dir"`
-	ModifiedAt int64       `json:"modified_at"`
+	Size       int64       `json:"size,omitempty"`
+	ModifiedAt int64       `json:"modified_at,omitempty"`
+	Symlink    string      `json:"symlink,omitempty"`
+	IsDir      bool        `json:"is_dir,omitempty"`
 	Mode       fs.FileMode `json:"mode,omitempty"`
 }
 
@@ -25,6 +28,7 @@ func Make(basepath string) (FileList, error) {
 			return err
 		}
 
+		mode := info.Mode()
 		relpath, err := filepath.Rel(basepath, path)
 		if err != nil {
 			return err
@@ -32,20 +36,30 @@ func Make(basepath string) (FileList, error) {
 		if relpath == "." {
 			return nil
 		}
-		if !info.IsDir() && !info.Mode().IsRegular() {
+
+		item := &FileListItem{Path: filepath.ToSlash(relpath)}
+
+		if info.IsDir() {
+			item.IsDir = true
+
+		} else if mode&fs.ModeSymlink != 0 {
+			link, err := os.Readlink(path)
+			if err != nil {
+				return err
+			}
+
+			item.Symlink = link
+
+		} else if mode.IsRegular() {
+			item.Size = info.Size()
+			item.ModifiedAt = info.ModTime().Unix()
+
+		} else {
 			return nil
 		}
 
-		item := &FileListItem{
-			Path:  filepath.ToSlash(relpath),
-			IsDir: info.IsDir(),
-		}
-		if !item.IsDir {
-			item.Size = info.Size()
-			item.ModifiedAt = info.ModTime().Unix()
-		}
 		if runtime.GOOS != "windows" {
-			item.Mode = info.Mode().Perm()
+			item.Mode = mode.Perm()
 		}
 
 		list = append(list, item)
@@ -59,17 +73,7 @@ func Make(basepath string) (FileList, error) {
 	return list, nil
 }
 
-// func (list FileList) Encode() []byte {
-// 	output, _ := json.MarshalIndent(list, "", "  ")
-// 	return output
-// }
-
-// func Parse(bytes []byte) (FileList, error) {
-// 	list := FileList{}
-
-// 	err := json.Unmarshal(bytes, &list)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("invalid json: %w", err)
-// 	}
-// 	return list, nil
-// }
+func (list FileList) Encode() string {
+	output, _ := json.MarshalIndent(list, "", "  ")
+	return string(output)
+}

@@ -130,6 +130,10 @@ func (b *SyncPlanBuilder) itemModesMatch(local, remote *FileListItem) bool {
 		// if one side doesn't exist, let's say they match -- can't sync modes anyway
 		return true
 	}
+	if local.Symlink != "" || remote.Symlink != "" {
+		// if this is a symlink, let's say modes match -- can't really sync symlink modes anyway
+		return true
+	}
 
 	localMode := local.Mode.Perm()
 	remoteMode := remote.Mode.Perm()
@@ -158,11 +162,13 @@ func itemsMatch(item, item2 *FileListItem) bool {
 	if item == nil || item2 == nil {
 		return false
 	}
-	if item.IsDir && item2.IsDir {
-		return true
+
+	if item.IsDir || item2.IsDir {
+		return item.IsDir == item2.IsDir
+	}
+	if item.Symlink != "" || item2.Symlink != "" {
+		return item.Symlink == item2.Symlink
 	}
 
-	return !item.IsDir && !item2.IsDir &&
-		item.Size == item2.Size &&
-		item.ModifiedAt == item2.ModifiedAt
+	return item.Size == item2.Size && item.ModifiedAt == item2.ModifiedAt
 }

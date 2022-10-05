@@ -83,3 +83,9 @@ func (n *Node) Chmod(path string, mode fs.FileMode) error {
 	mode = modeMask(baseMode, mode, mask)
 	return os.Chmod(filename, mode)
 }
+
+func (n *Node) Symlink(old, new string) error {
+	new = n.Path(new)
+	os.Remove(new)
+	return os.Symlink(old, new)
+}

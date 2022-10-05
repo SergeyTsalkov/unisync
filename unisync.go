@@ -41,6 +41,13 @@ func runClient() {
 		log.Fatalln(err)
 	}
 
+	// localList, err := filelist.Make(conf.Local)
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+	// fmt.Println(localList.Encode())
+	// os.Exit(0)
+
 	sshc := sshclient.New(conf.Host)
 	err = sshc.Run()
 	if err != nil {

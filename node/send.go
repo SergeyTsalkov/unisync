@@ -3,6 +3,7 @@ package node
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"runtime"
@@ -10,7 +11,21 @@ import (
 )
 
 func (n *Node) SendFile(path string) error {
-	file, err := os.Open(n.Path(path))
+	filename := n.Path(path)
+	info, err := os.Lstat(filename)
+	if err != nil {
+		return err
+	}
+
+	mode := info.Mode()
+	if mode.IsDir() {
+		return fmt.Errorf("can not SEND %v: is a directory", path)
+	}
+	if mode&fs.ModeSymlink != 0 {
+		return fmt.Errorf("can not SEND %v: is a symlink", path)
+	}
+
+	file, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
@@ -20,15 +35,7 @@ func (n *Node) SendFile(path string) error {
 			log.Fatalln("err closing file", path, ":", err)
 		}
 	}()
-	info, err := file.Stat()
-	if err != nil {
-		return err
-	}
-	if info.IsDir() {
-		return fmt.Errorf("can not SEND %v: is a directory", path)
-	}
 
-	mode := info.Mode().Perm()
 	if runtime.GOOS == "windows" {
 		mode = 0
 	}
@@ -48,7 +55,7 @@ func (n *Node) SendFile(path string) error {
 			Path:       path,
 			Length:     int64(len),
 			ModifiedAt: info.ModTime().Unix(),
-			Mode:       mode,
+			Mode:       mode.Perm(),
 			More:       more,
 		}
 

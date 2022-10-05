@@ -19,7 +19,6 @@ example:
 
 
 TODO:
-  - handle symlinks
   - dump server connection on error, auto reconect and retry
   - handle fswatch events on both sides
   - work without config file, from command line; choose cache name intelligently

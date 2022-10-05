@@ -65,6 +65,8 @@ func (s *Server) handle(line string) error {
 		return s.handleREQLIST(json)
 	case "MKDIR":
 		return s.handleMKDIR(json)
+	case "SYMLINK":
+		return s.handleSYMLINK(json)
 	case "CHMOD":
 		return s.handleCHMOD(json)
 	case "DEL":
@@ -142,6 +144,27 @@ func (s *Server) handleMKDIR(json string) error {
 
 	for _, dir := range cmd.Dirs {
 		err := s.Mkdir(dir.Path, dir.Mode)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = s.SendString("OK")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Server) handleSYMLINK(json string) error {
+	cmd := &commands.Symlink{}
+	err := commands.Parse(json, cmd)
+	if err != nil {
+		return err
+	}
+
+	for _, link := range cmd.Links {
+		err := s.Symlink(link.Symlink, link.Path)
 		if err != nil {
 			return err
 		}

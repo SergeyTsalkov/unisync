@@ -55,7 +55,7 @@ func (c *Client) MakeSyncPlan() (*filelist.SyncPlan, filelist.FileList, error) {
 func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 	var err error
 	for _, file := range syncplan.LocalDel {
-		err = os.Remove(file.Path)
+		err = os.Remove(c.Path(file.Path))
 		if err != nil {
 			return err
 		}
@@ -83,6 +83,25 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 	if len(syncplan.RemoteMkdir) > 0 {
 		mkdir := commands.MakeMkdir(syncplan.RemoteMkdir)
 		err = c.SendCmd(mkdir)
+		if err != nil {
+			return err
+		}
+		_, err = c.WaitFor("OK")
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, file := range syncplan.LocalMklink {
+		err = c.Symlink(file.Symlink, file.Path)
+		if err != nil {
+			return err
+		}
+	}
+
+	if len(syncplan.RemoteMklink) > 0 {
+		symlink := commands.MakeSymlink(syncplan.RemoteMklink)
+		err = c.SendCmd(symlink)
 		if err != nil {
 			return err
 		}
