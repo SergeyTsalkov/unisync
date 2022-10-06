@@ -17,6 +17,13 @@ func NewSyncPlanBuilder(config *config.Config) *SyncPlanBuilder {
 
 func (b *SyncPlanBuilder) BuildSyncPlan(localList, remoteList, cacheList FileList) *SyncPlan {
 	b.Plan = NewSyncPlan()
+
+	// if one side or the other is empty, don't use the cache
+	// we'll assume that we want the empty side repopulated, and never want the full side emptied
+	if len(localList) == 0 || len(remoteList) == 0 {
+		cacheList = nil
+	}
+
 	index := indexFileList(localList, remoteList, cacheList)
 
 	for _, lists := range index {

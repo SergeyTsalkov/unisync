@@ -16,11 +16,18 @@ example:
   unisync ~/localpath user@host:remotepath/
   unisync myhost.json
 
+alternative config format: (must still be able to encode as json for sending to server and back)
+  local = blah
+  remote = asdf
+  username = asdf
+  host = myip
+  ignore = 
+  chmod_local_dir = 0755
+
 
 
 TODO:
   - dump server connection on error, auto reconect and retry
-  - if one side or the other is empty, disable cache so that side definitely gets re-populated
   - ignore feature in config
   - handle fswatch events on both sides
   - work without config file, from command line; choose cache name intelligently
