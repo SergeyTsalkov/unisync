@@ -2,6 +2,7 @@ package node
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -13,7 +14,7 @@ import (
 var Buffer = make([]byte, 1000000)
 
 type Node struct {
-	Basepath string
+	basepath string
 	In       *bufio.Reader
 	Out      io.Writer
 	Debug    bool
@@ -21,13 +22,34 @@ type Node struct {
 	Config   *config.Config
 }
 
+func (n *Node) SetBasepath(basepath string) error {
+	var err error
+	basepath, err = filepath.Abs(n.Config.Local)
+	if err != nil {
+		return err
+	}
+
+	info, err := os.Lstat(basepath)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("%v is not a directory", basepath)
+	}
+	n.basepath = basepath
+	return nil
+}
+func (n *Node) GetBasepath() string {
+	return n.basepath
+}
+
 func (n *Node) Path(path string) string {
-	if n.Basepath == "" {
+	if n.basepath == "" {
 		log.Fatalln("basepath is not set")
 	}
 
 	path = filepath.FromSlash(path)
-	path = filepath.Join(n.Basepath, path)
+	path = filepath.Join(n.basepath, path)
 	path = filepath.Clean(path)
 	return path
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 	"unisync/commands"
 	"unisync/filelist"
@@ -14,6 +13,7 @@ import (
 )
 
 type Server struct {
+	loggedIn bool
 	*node.Node
 }
 
@@ -24,7 +24,7 @@ func New(in io.Reader, out io.Writer) *Server {
 		IsServer: true,
 	}
 
-	return &Server{node}
+	return &Server{Node: node}
 }
 
 func (s *Server) Run() error {
@@ -54,7 +54,7 @@ func (s *Server) handle(line string) error {
 	cmd := strings.ToUpper(words[0])
 	json := strings.TrimSpace(strings.TrimPrefix(line, cmd))
 
-	if cmd != "HELLO" && s.Basepath == "" {
+	if cmd != "HELLO" && !s.loggedIn {
 		return fmt.Errorf("must log in with HELLO first")
 	}
 
@@ -92,25 +92,17 @@ func (s *Server) handleHELLO(json string) error {
 	s.Config = cmd.Config
 	s.Config.Validate()
 
-	basepath := s.Config.Remote
-	if !filepath.IsAbs(basepath) {
-		return fmt.Errorf("path must be absolute")
-	}
-
-	info, err := os.Lstat(basepath)
+	err = s.SetBasepath(s.Config.Remote)
 	if err != nil {
-		return err
-	} else if !info.IsDir() {
-		return fmt.Errorf("path is not a directory")
+		return fmt.Errorf("Unable to set basepath: %w", err)
 	}
-
-	s.Basepath = basepath
 
 	err = s.SendString("OK")
 	if err != nil {
 		return err
 	}
 
+	s.loggedIn = true
 	return nil
 }
 

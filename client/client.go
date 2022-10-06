@@ -16,16 +16,21 @@ type Client struct {
 	cache filelist.FileList
 }
 
-func New(in io.Reader, out io.Writer, config *config.Config) *Client {
+func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
 	node := &node.Node{
-		Basepath: config.Local,
-		In:       bufio.NewReader(in),
-		Out:      out,
-		Debug:    true,
-		Config:   config,
+		In:     bufio.NewReader(in),
+		Out:    out,
+		Debug:  true,
+		Config: config,
+	}
+	client := &Client{Node: node}
+
+	err := client.SetBasepath(config.Local)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to set basepath: %w", err)
 	}
 
-	return &Client{Node: node}
+	return client, nil
 }
 
 func (c *Client) RunHello() error {

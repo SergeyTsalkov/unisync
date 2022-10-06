@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"io/fs"
 	"unisync/filelist"
 )
 
@@ -10,9 +9,8 @@ type Symlink struct {
 }
 
 type SymlinkAction struct {
-	Path    string      `json:"path"`
-	Symlink string      `json:"symlink"`
-	Mode    fs.FileMode `json:"mode"`
+	Path    string `json:"path"`
+	Symlink string `json:"symlink"`
 }
 
 func (c *Symlink) CmdType() string {
@@ -28,7 +26,7 @@ func MakeSymlink(items []*filelist.FileListItem) *Symlink {
 		Links: make([]*SymlinkAction, len(items)),
 	}
 	for i, item := range items {
-		symlink.Links[i] = &SymlinkAction{Path: item.Path, Symlink: item.Symlink, Mode: item.Mode}
+		symlink.Links[i] = &SymlinkAction{Path: item.Path, Symlink: item.Symlink}
 	}
 
 	return symlink

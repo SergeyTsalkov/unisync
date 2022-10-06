@@ -54,7 +54,11 @@ func runClient() {
 		log.Fatalln(err)
 	}
 
-	c := client.New(sshc.Out, sshc.In, conf)
+	c, err := client.New(sshc.Out, sshc.In, conf)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	err = c.RunHello()
 	if err != nil {
 		log.Fatalln(err)
