@@ -13,7 +13,8 @@ import (
 
 type Client struct {
 	*node.Node
-	cache filelist.FileList
+	cache          filelist.FileList
+	remoteBasepath string
 }
 
 func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
@@ -40,8 +41,14 @@ func (c *Client) RunHello() error {
 		return err
 	}
 
-	_, err = c.WaitFor("OK")
-	return err
+	whatsup := &commands.Whatsup{}
+	err = c.WaitForCmd(whatsup)
+	if err != nil {
+		return err
+	}
+
+	c.remoteBasepath = whatsup.Basepath
+	return nil
 }
 
 func (c *Client) RunReqList() (filelist.FileList, error) {
@@ -51,13 +58,8 @@ func (c *Client) RunReqList() (filelist.FileList, error) {
 		return nil, err
 	}
 
-	json, err := c.WaitFor("RESLIST")
-	if err != nil {
-		return nil, err
-	}
-
 	reply := &commands.ResList{}
-	err = commands.Parse(json, reply)
+	err = c.WaitForCmd(reply)
 	if err != nil {
 		return nil, err
 	}
@@ -85,6 +87,15 @@ func (c *Client) GetCommand() (cmd string, json string, err error) {
 		json = strings.TrimSpace(strings.TrimPrefix(line, cmd))
 		return
 	}
+}
+
+func (c *Client) WaitForCmd(ptr commands.Command) error {
+	json, err := c.WaitFor(ptr.CmdType())
+	if err != nil {
+		return err
+	}
+
+	return commands.Parse(json, ptr)
 }
 
 func (c *Client) WaitFor(expectCmd string) (json string, err error) {

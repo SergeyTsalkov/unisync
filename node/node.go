@@ -24,7 +24,7 @@ type Node struct {
 
 func (n *Node) SetBasepath(basepath string) error {
 	var err error
-	basepath, err = filepath.Abs(n.Config.Local)
+	basepath, err = filepath.Abs(basepath)
 	if err != nil {
 		return err
 	}

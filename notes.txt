@@ -20,10 +20,10 @@ example:
 
 TODO:
   - dump server connection on error, auto reconect and retry
+  - if one side or the other is empty, disable cache so that side definitely gets re-populated
+  - ignore feature in config
   - handle fswatch events on both sides
   - work without config file, from command line; choose cache name intelligently
-  - cache should remember (local,remote,ip) (will have to ask server to expand remote basepath)
-    dump cache if any of those change, or if we have trouble parsing cache
 
   - write to tmpfile in same dir, rename on finish, delete on error
     .unisync-tmp-[randomstring]

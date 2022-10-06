@@ -150,13 +150,8 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 		}
 
 		for len(paths) > 0 {
-			json, err := c.WaitFor("PUSH")
-			if err != nil {
-				return err
-			}
-
 			push := &commands.Push{}
-			err = commands.Parse(json, push)
+			err = c.WaitForCmd(push)
 			if err != nil {
 				return err
 			}

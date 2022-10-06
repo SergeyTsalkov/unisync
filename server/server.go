@@ -97,7 +97,8 @@ func (s *Server) handleHELLO(json string) error {
 		return fmt.Errorf("Unable to set basepath: %w", err)
 	}
 
-	err = s.SendString("OK")
+	whatsup := &commands.Whatsup{s.GetBasepath()}
+	err = s.SendCmd(whatsup)
 	if err != nil {
 		return err
 	}

@@ -11,12 +11,16 @@ import (
 	"unisync/filelist"
 )
 
-type Cache struct {
+type StoredCache struct {
 	Local  string `json:"local"`
 	Remote string `json:"remote"`
 	Host   string `json:"host"`
 
 	List filelist.FileList `json:"list"`
+}
+
+func (c *Client) cacheFullpath() string {
+	return filepath.Join(config.ConfigDir(), c.Config.Name+".cache")
 }
 
 func (c *Client) Cache() (filelist.FileList, error) {
@@ -30,21 +34,32 @@ func (c *Client) Cache() (filelist.FileList, error) {
 			return nil, err
 		}
 
-		err = json.Unmarshal(bytes, &c.cache)
+		stored := &StoredCache{}
+		err = json.Unmarshal(bytes, stored)
 		if err != nil {
-			log.Println("Unable to parse cache file, proceeding without:", fullpath)
+			log.Println("Unable to parse cache file, will generate new one:", fullpath)
 			return nil, nil
 		}
+
+		if stored.Local != c.GetBasepath() || stored.Remote != c.remoteBasepath || stored.Host != c.Config.Host {
+			log.Println("Cache seems to be for a different server, will generate new one:", fullpath)
+			return nil, nil
+		}
+
+		c.cache = stored.List
 	}
 	return c.cache, nil
 }
 
-func (c *Client) cacheFullpath() string {
-	return filepath.Join(config.ConfigDir(), c.Config.Name+".cache")
-}
-
 func (c *Client) SaveCache(cacheList filelist.FileList) error {
-	bytes, err := json.Marshal(cacheList)
+	stored := &StoredCache{
+		Local:  c.GetBasepath(),
+		Remote: c.remoteBasepath,
+		Host:   c.Config.Host,
+		List:   cacheList,
+	}
+
+	bytes, err := json.Marshal(stored)
 	if err != nil {
 		return err
 	}

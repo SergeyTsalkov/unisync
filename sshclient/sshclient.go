@@ -17,9 +17,10 @@ type SSHClient struct {
 	stderr io.Reader
 }
 
-func New(host string) *SSHClient {
+func New(username, host string) *SSHClient {
 	c := &SSHClient{}
-	c.cmd = exec.Command("ssh", "-e", "none", host, "unisync -stdserver")
+	sshto := username + "@" + host
+	c.cmd = exec.Command("ssh", "-e", "none", sshto, "unisync -stdserver")
 	var err error
 
 	c.In, err = c.cmd.StdinPipe()

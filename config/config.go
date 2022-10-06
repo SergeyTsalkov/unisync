@@ -13,12 +13,13 @@ import (
 )
 
 type Config struct {
-	Name   string `json:"name"`
-	Local  string `json:"local"`
-	Remote string `json:"remote"`
-	Host   string `json:"host"`
-	Method string `json:"method"`
-	Prefer string `json:"prefer"'`
+	Name     string `json:"name"`
+	Local    string `json:"local"`
+	Remote   string `json:"remote"`
+	Username string `json:"username"`
+	Host     string `json:"host"`
+	Method   string `json:"method"`
+	Prefer   string `json:"prefer"'`
 
 	Chmod *configTypeChmod `json:"chmod"`
 }

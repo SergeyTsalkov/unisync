@@ -48,7 +48,7 @@ func runClient() {
 	// fmt.Println(localList.Encode())
 	// os.Exit(0)
 
-	sshc := sshclient.New(conf.Host)
+	sshc := sshclient.New(conf.Username, conf.Host)
 	err = sshc.Run()
 	if err != nil {
 		log.Fatalln(err)
