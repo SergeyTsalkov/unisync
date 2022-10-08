@@ -77,50 +77,43 @@ func Parse(path string) (*Config, error) {
 		return nil, fmt.Errorf("Unable to read ConfigFile %v: %v", path, err)
 	}
 
-	config := &Config{}
+	config := &Config{
+		Method: "ssh",
+		Prefer: "newest",
+		Chmod: &configTypeChmod{
+			Local:     &FileMode{0644},
+			Remote:    &FileMode{0644},
+			LocalDir:  &FileMode{0755},
+			RemoteDir: &FileMode{0755},
+			Mask:      &FileMode{0100},
+			DirMask:   &FileMode{0},
+		},
+	}
 	err = json.Unmarshal(bytes, config)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse ConfigFile %v: %v", path, err)
 	}
 
 	_, config.Name = filepath.Split(path)
-	config.Validate()
+	err = config.validate()
+	if err != nil {
+		return nil, err
+	}
 	return config, nil
 }
 
-func (C *Config) Validate() {
-	if C.Chmod == nil {
-		C.Chmod = &configTypeChmod{}
+func (C *Config) validate() error {
+	if C.Local == "" {
+		return fmt.Errorf("config setting local is required (and missing)")
 	}
-	if C.Method == "" {
-		C.Method = "ssh"
-	}
-
-	if C.Prefer == "" {
-		C.Prefer = "newest"
+	if C.Remote == "" {
+		return fmt.Errorf("config setting remote is required (and missing)")
 	}
 	if C.Prefer != "newest" && C.Prefer != "oldest" && C.Prefer != "local" && C.Prefer != "remote" {
-		log.Fatalln("config.prefer must be one of: newest, oldest, local, remote")
+		return fmt.Errorf("config.prefer must be one of: newest, oldest, local, remote")
 	}
 
-	if C.Chmod.Local == nil {
-		C.Chmod.Local = &FileMode{0644}
-	}
-	if C.Chmod.LocalDir == nil {
-		C.Chmod.LocalDir = &FileMode{0755}
-	}
-	if C.Chmod.Remote == nil {
-		C.Chmod.Remote = &FileMode{0644}
-	}
-	if C.Chmod.RemoteDir == nil {
-		C.Chmod.RemoteDir = &FileMode{0755}
-	}
-	if C.Chmod.Mask == nil {
-		C.Chmod.Mask = &FileMode{0100}
-	}
-	if C.Chmod.DirMask == nil {
-		C.Chmod.DirMask = &FileMode{0}
-	}
+	return nil
 }
 
 func ConfigDir() string {
