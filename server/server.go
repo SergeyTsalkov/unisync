@@ -1,7 +1,6 @@
 package server
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -18,12 +17,8 @@ type Server struct {
 }
 
 func New(in io.Reader, out io.Writer) *Server {
-	node := &node.Node{
-		In:       bufio.NewReader(in),
-		Out:      out,
-		IsServer: true,
-	}
-
+	node := node.New(in, out)
+	node.IsServer = true
 	return &Server{Node: node}
 }
 
@@ -250,7 +245,7 @@ func (s *Server) handlePUSH(json string) error {
 		return err
 	}
 
-	_, err = s.ReceiveFile(cmd, buf)
+	err = s.ReceiveFile(cmd, buf)
 	if err != nil {
 		return err
 	}

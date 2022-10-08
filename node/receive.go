@@ -3,74 +3,107 @@ package node
 import (
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
+	"path/filepath"
 	"time"
 	"unisync/commands"
 )
 
-var receiving = map[string]*os.File{}
+func (n *Node) ReceiveFile(cmd *commands.Push, buf []byte) error {
+	fullpath := n.Path(cmd.Path)
 
-func (n *Node) ReceiveFile(cmd *commands.Push, buf []byte) (bool, error) {
-	filename := n.Path(cmd.Path)
-	file := receiving[filename]
-	done := !cmd.More
+	if n.receiveFile == nil {
+		n.openReceiveFile(cmd)
+	} else if n.receiveFullpath != fullpath {
+		return fmt.Errorf("can't RECEIVE %v: %v is still open", fullpath, n.receiveFullpath)
+	}
 
-	// starting to receive a file
-	if file == nil {
+	_, err := n.receiveFile.Write(buf)
+	if err != nil {
+		return err
+	}
 
-		if info, err := os.Lstat(filename); err == nil {
-			mode := info.Mode()
-			if mode.IsDir() {
-				// we are trying to write to a file that's actually a dir
-				// this should never happen unless the sync step really messed up
-				return done, fmt.Errorf("can not RECEIVE %v: is a directory", cmd.Path)
-			}
-			if mode&fs.ModeSymlink != 0 {
-				// this can happen if the symlink was changed to a file
-				// remove the symlink before creating the file
-				err = os.Remove(filename)
-				if err != nil {
-					return done, err
-				}
-			}
-		}
-
-		// if this file was a symlink before, then we've just deleted the symlink
-		// therefore, we need to find out the file's mode again
-		// this will be the default mode set in the config if the file doesn't exist
-		mode := n.fileMode(filename)
-
-		// if we got a mode of 0 (the sending side is Windows), just keep the mode we have
-		if cmd.Mode != 0 {
-			mask := n.Config.Chmod.Mask.Perm()
-			mode = modeMask(mode, cmd.Mode, mask)
-		}
-
-		var err error
-		file, err = os.Create(filename)
+	if !cmd.More {
+		err = n.CloseReceiveFile(cmd)
 		if err != nil {
-			return done, err
-		}
-		receiving[filename] = file
-
-		err = file.Chmod(mode)
-		if err != nil {
-			return done, err
+			return err
 		}
 	}
 
-	_, err := file.Write(buf)
+	return nil
+}
 
-	if done {
-		delete(receiving, filename)
-		if err := file.Close(); err != nil {
-			log.Fatalln("err closing file", filename, ":", err)
+func (n *Node) openReceiveFile(cmd *commands.Push) error {
+	fullpath := n.Path(cmd.Path)
+
+	if n.receiveFile != nil {
+		return fmt.Errorf("can't RECEIVE %v: %v is still open", fullpath, n.receiveFullpath)
+	}
+
+	var perm fs.FileMode
+	if info, err := os.Lstat(fullpath); err == nil {
+		if info.Mode().IsDir() {
+			return fmt.Errorf("can't RECEIVE %v: is a directory", fullpath)
 		}
-		if err := os.Chtimes(filename, time.Now(), time.Unix(cmd.ModifiedAt, 0)); err != nil {
-			log.Fatalln("err setting mtime", filename, ":", err)
+		perm = info.Mode().Perm()
+	} else {
+		if n.IsServer {
+			perm = n.Config.Chmod.Remote.Perm()
+		} else {
+			perm = n.Config.Chmod.Local.Perm()
 		}
 	}
 
-	return done, err
+	// if we got a mode of 0 (the sending side is Windows), just keep the mode we have
+	if cmd.Mode.Perm() != 0 {
+		perm = n.FileMask(perm, cmd.Mode)
+	}
+
+	dir, _ := filepath.Split(fullpath)
+	tempfullpath := filepath.Join(dir, ".unisync-tmp")
+
+	var err error
+	n.receiveFile, err = os.Create(tempfullpath)
+	if err != nil {
+		return err
+	}
+
+	n.receiveFullpath = fullpath
+	err = n.receiveFile.Chmod(perm)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (n *Node) CloseReceiveFile(cmd *commands.Push) error {
+	if n.receiveFile == nil {
+		return nil
+	}
+
+	err := n.receiveFile.Close()
+	if err != nil {
+		return err
+	}
+
+	if cmd != nil {
+		err = os.Rename(n.receiveFile.Name(), n.receiveFullpath)
+		if err != nil {
+			return err
+		}
+
+		err = os.Chtimes(n.receiveFullpath, time.Now(), time.Unix(cmd.ModifiedAt, 0))
+		if err != nil {
+			return err
+		}
+	} else {
+		err = os.Remove(n.receiveFile.Name())
+		if err != nil {
+			return err
+		}
+	}
+
+	n.receiveFile = nil
+	n.receiveFullpath = ""
+	return nil
 }

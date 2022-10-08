@@ -14,12 +14,19 @@ import (
 var Buffer = make([]byte, 1000000)
 
 type Node struct {
-	basepath string
 	In       *bufio.Reader
 	Out      io.Writer
 	Debug    bool
 	IsServer bool
 	Config   *config.Config
+	basepath string
+
+	receiveFile     *os.File
+	receiveFullpath string
+}
+
+func New(in io.Reader, out io.Writer) *Node {
+	return &Node{In: bufio.NewReader(in), Out: out}
 }
 
 func (n *Node) SetBasepath(basepath string) error {
@@ -58,32 +65,24 @@ func modeMask(baseMode, newMode, mask os.FileMode) os.FileMode {
 	mode := newMode&mask | baseMode&(^mask)
 	return mode.Perm()
 }
-
-// returns filemode, or default mode if file doesn't exist
-func (n *Node) fileMode(filename string) fs.FileMode {
-	info, err := os.Lstat(filename)
-	if err != nil {
-		if n.IsServer {
-			return n.Config.Chmod.Remote.Perm()
-		} else {
-			return n.Config.Chmod.Local.Perm()
-		}
-	}
-	return info.Mode().Perm()
+func (n *Node) FileMask(baseMode, newMode os.FileMode) os.FileMode {
+	return modeMask(baseMode, newMode, n.Config.Chmod.Mask.Perm())
+}
+func (n *Node) DirMask(baseMode, newMode os.FileMode) os.FileMode {
+	return modeMask(baseMode, newMode, n.Config.Chmod.DirMask.Perm())
 }
 
 func (n *Node) Mkdir(path string, mode fs.FileMode) error {
 	fullpath := n.Path(path)
 
 	var baseMode fs.FileMode
-	mask := n.Config.Chmod.DirMask.Perm()
 	if n.IsServer {
 		baseMode = n.Config.Chmod.RemoteDir.Perm()
 	} else {
 		baseMode = n.Config.Chmod.LocalDir.Perm()
 	}
 
-	mode = modeMask(baseMode, mode, mask)
+	mode = n.DirMask(baseMode, mode)
 	return os.Mkdir(fullpath, mode)
 }
 
@@ -95,14 +94,12 @@ func (n *Node) Chmod(path string, mode fs.FileMode) error {
 	}
 
 	baseMode := info.Mode().Perm()
-	var mask fs.FileMode
 	if info.IsDir() {
-		mask = n.Config.Chmod.DirMask.Perm()
+		mode = n.DirMask(baseMode, mode)
 	} else {
-		mask = n.Config.Chmod.Mask.Perm()
+		mode = n.FileMask(baseMode, mode)
 	}
 
-	mode = modeMask(baseMode, mode, mask)
 	return os.Chmod(filename, mode)
 }
 

@@ -1,7 +1,6 @@
 package client
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"strings"
@@ -18,12 +17,9 @@ type Client struct {
 }
 
 func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
-	node := &node.Node{
-		In:     bufio.NewReader(in),
-		Out:    out,
-		Debug:  true,
-		Config: config,
-	}
+	node := node.New(in, out)
+	node.Debug = true
+	node.Config = config
 	client := &Client{Node: node}
 
 	err := client.SetBasepath(config.Local)

@@ -166,11 +166,11 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 				return err
 			}
 
-			done, err := c.ReceiveFile(push, buf)
+			err = c.ReceiveFile(push, buf)
 			if err != nil {
 				return err
 			}
-			if done {
+			if !push.More {
 				delete(paths, push.Path)
 			}
 		}
