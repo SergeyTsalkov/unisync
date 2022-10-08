@@ -77,27 +77,26 @@ func (n *Node) openReceiveFile(cmd *commands.Push) error {
 }
 
 func (n *Node) CloseReceiveFile(cmd *commands.Push) error {
-	if n.receiveFile == nil {
+	file := n.receiveFile
+	if file == nil {
 		return nil
 	}
 
-	err := n.receiveFile.Close()
+	// always try to remove the tmpfile; this will fail if we've already moved it
+	defer os.Remove(file.Name())
+
+	err := file.Close()
 	if err != nil {
 		return err
 	}
 
 	if cmd != nil {
-		err = os.Rename(n.receiveFile.Name(), n.receiveFullpath)
+		err = os.Rename(file.Name(), n.receiveFullpath)
 		if err != nil {
 			return err
 		}
 
 		err = os.Chtimes(n.receiveFullpath, time.Now(), time.Unix(cmd.ModifiedAt, 0))
-		if err != nil {
-			return err
-		}
-	} else {
-		err = os.Remove(n.receiveFile.Name())
 		if err != nil {
 			return err
 		}

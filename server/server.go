@@ -23,6 +23,9 @@ func New(in io.Reader, out io.Writer) *Server {
 }
 
 func (s *Server) Run() error {
+	// if a network error prevented a file from being fully transmitted, delete the tmpfile
+	defer s.CloseReceiveFile(nil)
+
 	for {
 		line, err := s.In.ReadString('\n')
 		if err != nil {
