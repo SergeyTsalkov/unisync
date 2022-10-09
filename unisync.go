@@ -36,7 +36,7 @@ func runServer() {
 }
 
 func runClient() {
-	conf, err := config.Parse("test.json")
+	conf, err := config.Parse("test")
 	if err != nil {
 		log.Fatalln(err)
 	}
