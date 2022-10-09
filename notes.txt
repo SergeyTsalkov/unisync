@@ -16,18 +16,8 @@ example:
   unisync ~/localpath user@host:remotepath/
   unisync myhost.json
 
-alternative config format: (must still be able to encode as json for sending to server and back)
-  local = blah
-  remote = asdf
-  username = asdf
-  host = myip
-  ignore = 
-
-  chmod_local_dir = 0755
-
 
 TODO:
-  - better config file format
   - ignore feature in config (use .gitignore format?)
   - dump server connection on error, auto reconect and retry
   - handle timeouts: on connect (regardless of method); use PING once a minute to catch disconects at any point

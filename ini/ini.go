@@ -29,9 +29,14 @@ func Unmarshal(data []byte, ptr any) error {
 		key = strings.ToLower(strings.TrimSpace(key))
 		value = strings.TrimSpace(value)
 
+		// commented out field?
+		if strings.ContainsAny(key, "#; ") {
+			continue
+		}
+
 		v, ok := fieldMap[key]
 		if !ok {
-			return fmt.Errorf("invalid field %v", key)
+			return fmt.Errorf("invalid setting %v", key)
 		}
 
 		err = setValue(v, value)

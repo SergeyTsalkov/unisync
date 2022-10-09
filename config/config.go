@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unisync/ini"
 )
 
 type Config struct {
@@ -20,7 +21,6 @@ type Config struct {
 	Host     string   `json:"host"`
 	Method   string   `json:"method"`
 	Prefer   string   `json:"prefer"'`
-	Timeout  int      `json:"timeout"`
 	Ignore   []string `json:"ignore"`
 
 	ChmodLocal     FileMode `json:"chmod_local"`
@@ -70,8 +70,8 @@ func Parse(path string) (*Config, error) {
 	}
 
 	if !fileExists(path) {
-		if !strings.HasSuffix(path, ".json") {
-			path = path + ".json"
+		if !strings.HasSuffix(path, ".conf") {
+			path = path + ".conf"
 		}
 
 		if !fileExists(path) {
@@ -94,20 +94,20 @@ func Parse(path string) (*Config, error) {
 		ChmodMask:      FileMode{0100},
 		ChmodDirMask:   FileMode{0},
 	}
-	err = json.Unmarshal(bytes, config)
+	err = ini.Unmarshal(bytes, config)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse ConfigFile %v: %v", path, err)
 	}
 
 	_, config.Name = filepath.Split(path)
-	err = config.validate()
+	err = config.Validate()
 	if err != nil {
 		return nil, err
 	}
 	return config, nil
 }
 
-func (C *Config) validate() error {
+func (C *Config) Validate() error {
 	if C.Local == "" {
 		return fmt.Errorf("config setting local is required (and missing)")
 	}

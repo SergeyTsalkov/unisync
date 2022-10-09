@@ -66,10 +66,10 @@ func modeMask(baseMode, newMode, mask os.FileMode) os.FileMode {
 	return mode.Perm()
 }
 func (n *Node) FileMask(baseMode, newMode os.FileMode) os.FileMode {
-	return modeMask(baseMode, newMode, n.Config.Chmod.Mask.Perm())
+	return modeMask(baseMode, newMode, n.Config.ChmodMask.Perm())
 }
 func (n *Node) DirMask(baseMode, newMode os.FileMode) os.FileMode {
-	return modeMask(baseMode, newMode, n.Config.Chmod.DirMask.Perm())
+	return modeMask(baseMode, newMode, n.Config.ChmodDirMask.Perm())
 }
 
 func (n *Node) Mkdir(path string, mode fs.FileMode) error {
@@ -77,9 +77,9 @@ func (n *Node) Mkdir(path string, mode fs.FileMode) error {
 
 	var baseMode fs.FileMode
 	if n.IsServer {
-		baseMode = n.Config.Chmod.RemoteDir.Perm()
+		baseMode = n.Config.ChmodRemoteDir.Perm()
 	} else {
-		baseMode = n.Config.Chmod.LocalDir.Perm()
+		baseMode = n.Config.ChmodLocalDir.Perm()
 	}
 
 	mode = n.DirMask(baseMode, mode)

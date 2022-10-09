@@ -48,9 +48,9 @@ func (n *Node) openReceiveFile(cmd *commands.Push) error {
 		perm = info.Mode().Perm()
 	} else {
 		if n.IsServer {
-			perm = n.Config.Chmod.Remote.Perm()
+			perm = n.Config.ChmodRemote.Perm()
 		} else {
-			perm = n.Config.Chmod.Local.Perm()
+			perm = n.Config.ChmodLocal.Perm()
 		}
 	}
 

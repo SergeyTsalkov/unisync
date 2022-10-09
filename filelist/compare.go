@@ -152,9 +152,9 @@ func (b *SyncPlanBuilder) itemModesMatch(local, remote *FileListItem) bool {
 
 	var mask fs.FileMode
 	if local.IsDir {
-		mask = b.Config.Chmod.DirMask.Perm()
+		mask = b.Config.ChmodDirMask.Perm()
 	} else {
-		mask = b.Config.Chmod.Mask.Perm()
+		mask = b.Config.ChmodMask.Perm()
 	}
 
 	localMode = localMode & mask
