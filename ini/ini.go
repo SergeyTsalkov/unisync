@@ -56,26 +56,29 @@ func setValue(v reflect.Value, str string) error {
 		return unmarshaler.UnmarshalINI([]byte(str))
 	}
 
-	setVal, err := getValue(str, v.Type(), true)
-	if err != nil {
-		return err
-	}
 	if v.Type().Kind() == reflect.Slice {
+		setVal, err := getValue(str, v.Type().Elem())
+		if err != nil {
+			return err
+		}
+
 		v.Set(reflect.Append(v, setVal))
 	} else {
+		setVal, err := getValue(str, v.Type())
+		if err != nil {
+			return err
+		}
+
 		v.Set(setVal)
 	}
 
 	return nil
 }
 
-func getValue(str string, typ reflect.Type, canRecurse bool) (reflect.Value, error) {
+func getValue(str string, typ reflect.Type) (reflect.Value, error) {
 	kind := typ.Kind()
 
-	if kind == reflect.Slice && canRecurse {
-		return getValue(str, typ.Elem(), false)
-
-	} else if kind == reflect.String {
+	if kind == reflect.String {
 		return reflect.ValueOf(str), nil
 
 	} else if kind == reflect.Int || kind == reflect.Int8 || kind == reflect.Int16 || kind == reflect.Int32 || kind == reflect.Int64 {
