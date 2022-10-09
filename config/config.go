@@ -13,24 +13,22 @@ import (
 )
 
 type Config struct {
-	Name     string `json:"name"`
-	Local    string `json:"local"`
-	Remote   string `json:"remote"`
-	Username string `json:"username"`
-	Host     string `json:"host"`
-	Method   string `json:"method"`
-	Prefer   string `json:"prefer"'`
+	Name     string   `json:"name"`
+	Local    string   `json:"local"`
+	Remote   string   `json:"remote"`
+	Username string   `json:"username"`
+	Host     string   `json:"host"`
+	Method   string   `json:"method"`
+	Prefer   string   `json:"prefer"'`
+	Timeout  int      `json:"timeout"`
+	Ignore   []string `json:"ignore"`
 
-	Chmod *configTypeChmod `json:"chmod"`
-}
-
-type configTypeChmod struct {
-	Local     *FileMode `json:"local,omitempty"`
-	LocalDir  *FileMode `json:"local_dir,omitempty"`
-	Remote    *FileMode `json:"remote,omitempty"`
-	RemoteDir *FileMode `json:"remote_dir,omitempty"`
-	Mask      *FileMode `json:"mask,omitempty"`
-	DirMask   *FileMode `json:"dir_mask,omitempty"`
+	ChmodLocal     FileMode `json:"chmod_local"`
+	ChmodLocalDir  FileMode `json:"chmod_local_dir"`
+	ChmodRemote    FileMode `json:"chmod_remote"`
+	ChmodRemoteDir FileMode `json:"chmod_remote_dir"`
+	ChmodMask      FileMode `json:"chmod_mask"`
+	ChmodDirMask   FileMode `json:"chmod_dir_mask"`
 }
 
 type FileMode struct {
@@ -78,16 +76,14 @@ func Parse(path string) (*Config, error) {
 	}
 
 	config := &Config{
-		Method: "ssh",
-		Prefer: "newest",
-		Chmod: &configTypeChmod{
-			Local:     &FileMode{0644},
-			Remote:    &FileMode{0644},
-			LocalDir:  &FileMode{0755},
-			RemoteDir: &FileMode{0755},
-			Mask:      &FileMode{0100},
-			DirMask:   &FileMode{0},
-		},
+		Method:         "ssh",
+		Prefer:         "newest",
+		ChmodLocal:     FileMode{0644},
+		ChmodRemote:    FileMode{0644},
+		ChmodLocalDir:  FileMode{0755},
+		ChmodRemoteDir: FileMode{0755},
+		ChmodMask:      FileMode{0100},
+		ChmodDirMask:   FileMode{0},
 	}
 	err = json.Unmarshal(bytes, config)
 	if err != nil {
