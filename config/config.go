@@ -52,6 +52,15 @@ func (f *FileMode) MarshalJSON() ([]byte, error) {
 	return json.Marshal(strconv.FormatUint(uint64(f.Perm()), 8))
 }
 
+func (f *FileMode) UnmarshalINI(b []byte) error {
+	i, err := strconv.ParseUint(string(b), 8, 32)
+	if err != nil {
+		return err
+	}
+	f.FileMode = fs.FileMode(i)
+	return nil
+}
+
 var once sync.Once
 var configDir string
 

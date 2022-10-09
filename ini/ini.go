@@ -7,6 +7,12 @@ import (
 	"strings"
 )
 
+type Unmarshaler interface {
+	UnmarshalINI([]byte) error
+}
+
+var unmarshalerType = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
+
 func Unmarshal(data []byte, ptr any) error {
 	fieldMap, err := makeFieldMap(ptr)
 	if err != nil {
@@ -28,22 +34,33 @@ func Unmarshal(data []byte, ptr any) error {
 			return fmt.Errorf("invalid field %v", key)
 		}
 
-		setValue(v, value)
+		err = setValue(v, value)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
 func setValue(v reflect.Value, str string) error {
+	if v.CanConvert(unmarshalerType) {
+		if v.IsNil() {
+			v.Set(reflect.New(v.Type().Elem()))
+		}
+		unmarshaler := (v.Interface()).(Unmarshaler)
+		return unmarshaler.UnmarshalINI([]byte(str))
+	}
+	if ptr := v.Addr(); ptr.CanConvert(unmarshalerType) {
+		unmarshaler := (ptr.Interface()).(Unmarshaler)
+		return unmarshaler.UnmarshalINI([]byte(str))
+	}
 
-	typ := v.Type()
-	kind := typ.Kind()
-	setVal, err := getValue(str, typ, true)
+	setVal, err := getValue(str, v.Type(), true)
 	if err != nil {
 		return err
 	}
-
-	if kind == reflect.Slice {
+	if v.Type().Kind() == reflect.Slice {
 		v.Set(reflect.Append(v, setVal))
 	} else {
 		v.Set(setVal)
@@ -77,7 +94,7 @@ func getValue(str string, typ reflect.Type, canRecurse bool) (reflect.Value, err
 
 	}
 
-	return reflect.Value{}, fmt.Errorf("struct contains unknown valid %v", kind)
+	return reflect.Value{}, fmt.Errorf("struct contains unknown type %v", typ)
 }
 
 func makeFieldMap(ptr any) (map[string]reflect.Value, error) {
