@@ -112,7 +112,7 @@ func (s *Server) handleREQLIST(json string) error {
 		return err
 	}
 
-	list, err := filelist.Make(s.Path(cmd.Path))
+	list, err := filelist.Make(s.Path(cmd.Path), s.Config.Ignore)
 	if err != nil {
 		return err
 	}

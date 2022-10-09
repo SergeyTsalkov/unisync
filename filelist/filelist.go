@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"unisync/gitignore"
 )
 
 type FileListItem struct {
@@ -19,7 +20,7 @@ type FileListItem struct {
 
 type FileList []*FileListItem
 
-func Make(basepath string) (FileList, error) {
+func Make(basepath string, ignore []string) (FileList, error) {
 	list := FileList{}
 	basepath = filepath.Clean(basepath)
 
@@ -37,8 +38,15 @@ func Make(basepath string) (FileList, error) {
 			return nil
 		}
 
-		item := &FileListItem{Path: filepath.ToSlash(relpath)}
+		relpath = filepath.ToSlash(relpath)
+		if gitignore.MatchAny(ignore, relpath, info.IsDir()) {
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
 
+		item := &FileListItem{Path: relpath}
 		if info.IsDir() {
 			item.IsDir = true
 

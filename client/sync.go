@@ -37,7 +37,7 @@ func (c *Client) MakeSyncPlan() (*filelist.SyncPlan, filelist.FileList, error) {
 		return nil, nil, err
 	}
 
-	localList, err := filelist.Make(c.GetBasepath())
+	localList, err := filelist.Make(c.GetBasepath(), c.Config.Ignore)
 	if err != nil {
 		return nil, nil, err
 	}

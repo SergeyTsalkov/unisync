@@ -17,9 +17,6 @@ func MatchAny(patterns []string, name string, isDir bool) bool {
 }
 
 func Match(pattern, name string, isDir bool) bool {
-	if len(pattern) == 0 && len(name) == 0 {
-		return true
-	}
 	if len(pattern) == 0 || len(name) == 0 {
 		return false
 	}
@@ -40,13 +37,14 @@ func Match(pattern, name string, isDir bool) bool {
 	}
 
 	for {
-		patternPart, _, patternLen := parts(pattern)
-		namePart, _, nameLen := parts(name)
-
-		if patternLen == 0 || nameLen == 0 {
+		if len(pattern) == 0 || len(name) == 0 {
 			break
 		}
-		if nameLen == 1 && mustDir && !isDir {
+
+		patternPart, _ := part(pattern)
+		namePart, isLastPartOfName := part(name)
+
+		if isLastPartOfName && mustDir && !isDir {
 			return false
 		}
 
@@ -77,20 +75,12 @@ func Match(pattern, name string, isDir bool) bool {
 	return len(pattern) == 0
 }
 
-func parts(path string) (string, string, int) {
-	parts := strings.Split(path, separator)
-
-	if len(parts) == 1 {
-		if len(parts[0]) == 0 {
-			return "", "", 0
-		}
-		return parts[0], "", 1
-	}
-
-	return parts[0], parts[1], len(parts)
+func part(path string) (string, bool) {
+	part, _, hasMore := strings.Cut(path, separator)
+	return part, !hasMore
 }
 
 func shift(path string) string {
-	parts := strings.Split(path, separator)
-	return strings.Join(parts[1:], separator)
+	_, remainder, _ := strings.Cut(path, separator)
+	return remainder
 }

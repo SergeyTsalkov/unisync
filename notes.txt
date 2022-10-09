@@ -16,26 +16,8 @@ example:
   unisync ~/localpath user@host:remotepath/
   unisync myhost.json
 
-GITIGNORE:
-  - prefix ! negates pattern, unless preceeded by \
-  - slash at start or middle anchors pattern to the start
-  - slash at end matches only directory
-
-  path.Match() rules apply:
-  - * matches 0 or more chars except /
-  - ? matches single char except /
-  - [A-Z0-9] type ranges are available
-
-  - **/foo matches foo anywhere
-  - foo/** matches all files/dirs inside foo, to any depth
-  - foo/**/bar matches foo/bar, foo/a/bar, foo/a/b/bar, and so on
-  - any other use of ** is just equivalent to *
-
-
-
 
 TODO:
-  - ignore feature in config (use .gitignore format?)
   - dump server connection on error, auto reconect and retry
   - handle timeouts: on connect (regardless of method); use PING once a minute to catch disconects at any point
   - nativessh method
