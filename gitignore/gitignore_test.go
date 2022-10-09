@@ -1,6 +1,8 @@
 package gitignore
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestGitIgnore(t *testing.T) {
 	tests := []struct {
@@ -44,6 +46,35 @@ func TestGitIgnore(t *testing.T) {
 		{"this/is.txt/", "this/is.txt", false, false},
 		{"this/is.txt/", "this/is.txt", true, true},
 		{"this/is/", "this/is/myfile.txt", false, true},
+		{"myfile.txt/", "this/is/myfile.txt", false, false},
+		{"myfile.txt", "this/is/myfile.txt", false, true},
+		{"mydir", "this/is/mydir", true, true},
+		{"mydir/", "this/is/mydir", true, true},
+
+		// starting with ** lets us match at any depth
+		{"**/is/mydir/", "and/this/is/mydir", true, true},
+		{"**/this/is/", "and/this/is/mydir", true, true},
+		{"**/this/is", "and/this/is/mydir", true, true},
+		{"**/is", "and/this/is/mydir", true, true},
+		{"**/mydir", "and/this/is/mydir", true, true},
+		{"**/and/this", "and/this/is/mydir", true, true},
+		{"**/and", "and/this/is/mydir", true, true},
+		{"**/an", "and/this/is/mydir", true, false},
+		{"**", "and/this/is/mydir", true, true},
+
+		// putting ** in the middle lets us match 0 or more arbitrary path sections
+		{"and/**/this", "and/this/is/mydir", true, true},
+		{"and/**/is", "and/this/is/mydir", true, true},
+		{"and/**/is/mydir", "and/this/is/mydir", true, true},
+		{"and/**/mydir", "and/this/is/mydir", true, true},
+		{"and/**/mydir", "and/this/is/mydir", true, true},
+		{"an/**/mydir", "and/this/is/mydir", true, false},
+
+		// putting ** at the end is redundant
+		{"and/**", "and/this/is/mydir", true, true},
+		{"an/**", "and/this/is/mydir", true, false},
+		{"this/**", "and/this/is/mydir", true, false},
+		{"and/this/**", "and/this/is/mydir", true, true},
 	}
 
 	for _, test := range tests {

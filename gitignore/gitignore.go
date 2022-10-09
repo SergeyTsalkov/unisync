@@ -7,7 +7,23 @@ import (
 
 var separator = "/"
 
+func MatchAny(patterns []string, name string, isDir bool) bool {
+	for _, pattern := range patterns {
+		if Match(pattern, name, isDir) {
+			return true
+		}
+	}
+	return false
+}
+
 func Match(pattern, name string, isDir bool) bool {
+	if len(pattern) == 0 && len(name) == 0 {
+		return true
+	}
+	if len(pattern) == 0 || len(name) == 0 {
+		return false
+	}
+
 	pattern = strings.ToLower(pattern)
 	name = strings.ToLower(name)
 
@@ -30,21 +46,25 @@ func Match(pattern, name string, isDir bool) bool {
 		if patternLen == 0 || nameLen == 0 {
 			break
 		}
+		if nameLen == 1 && mustDir && !isDir {
+			return false
+		}
+
+		if patternPart == "**" {
+			anchored = false
+			pattern = shift(pattern)
+			continue
+		}
 
 		match, err := path.Match(patternPart, namePart)
 		if err != nil {
 			return false
 		}
+
 		if match {
 			anchored = true
-
-			// if there was a trailing slash in the pattern,
-			// the last part of the pattern must match a dir
-			if patternLen == 1 && nameLen == 1 && mustDir && !isDir {
-				return false
-			}
-
-		} else if anchored {
+		}
+		if !match && anchored {
 			return false
 		}
 
