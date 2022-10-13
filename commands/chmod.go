@@ -18,6 +18,10 @@ func (c *Chmod) CmdType() string {
   return "CHMOD"
 }
 
+func (c *Chmod) BodyLen() int {
+  return 0
+}
+
 func MakeChmod(items []*filelist.FileListItem) *Chmod {
   if len(items) == 0 {
     return nil

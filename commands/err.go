@@ -8,3 +8,7 @@ type Error struct {
 func (c *Error) CmdType() string {
   return "ERR"
 }
+
+func (c *Error) BodyLen() int {
+  return 0
+}

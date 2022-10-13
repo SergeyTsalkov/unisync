@@ -15,6 +15,114 @@ rsync --archive --delete --exclude='.git' --exclude='unisync' /Users/sergey/unis
 example:
   unisync ~/localpath user@host:remotepath/
   unisync myhost.json
+  unisync -start myhost.json (run in background)
+  unisync -stop myhost.json (stop running in background)
+  unisync -stopall
+  unisync -status (list jobs running in background)
+
+FSWATCH:
+  - when server sends FSEVENT packet, it shouldn't send any more until it gets REQINFO packet
+  - fsevent should be channel with buffer of 1; all sends to it should be send-or-give-up
+
+WATCHER CLASS:
+  w.C := chan with buffer 1
+
+  main loop:
+    ready := atomic.Bool{}
+    for event <- events:
+      if ready.Load() == true && !gitignore.!MatchAny():
+        send(event)
+        ready.Store(false)
+    
+  send(event):
+    switch{
+      w.C <- event
+      default:
+    }
+    
+    
+  ready():
+    ready.Store(true)
+
+
+FSWATCH SERVER:
+  
+  main loop:
+    switch {
+      packet := <- packets:
+        handle(packet)
+      fsevent := <- fsevents:
+        handleEvent(fsevent): send FSEVENT, don't send anymore until we get a REQINFO packet
+      error := <- node.errors:
+        return err
+    }
+
+  handle(packet):
+    - when we get REQINFO, set watcher.Ready() before replying
+
+FSWATCH CLIENT:
+  problem:
+    - sync() needs to be able to call waitFor()
+    - waitFor() must return awaited packet, while setting aside FSEVENT
+    - FSEVENT packet might come in while we're waiting for a different packet
+
+  network read loop (own channel): same as server
+
+  
+  handlePacket() (own channel):
+    for packet <- packets {
+      if packet == PONG: // do nothing
+      else if packet == FSEVENT: TryChan(fsevents, RemoteEvent{})
+      else: waitable <- packet
+    }
+
+
+
+  waitFor(packetType) (main channel):
+    packet <- waitable
+    if packet.Type() != packetType: return err wrong packet
+    return packet
+  
+
+  main loop:
+    sync()
+
+    for event := range fsevents {
+      // might represent server event through FSEVENT, or local event from watcher
+      sync()
+    }
+
+  sync():
+    - set watcher.Ready() when starting
+
+
+Packet {
+  cmd *Command
+  raw []byte
+  extra []byte
+}
+
+Problem: waitFor("RESLIST")
+Option 1: Command{} has Body []byte to store body
+  cmd, err := waitFor("RESLIST")
+  list := cmd.(*command.ResList)
+Option 2: Packet{} has raw []byte to store raw command
+  cmd := commands.ResList{}
+  err := waitFor(&cmd)
+  Problem: it means Command{} is decoded twice; would be nice to preserve it the first time
+
+
+
+
+WHEN TO PING/PONG?
+  Option 1:
+    - when client is idle, start 1 minute timer; when timer fires, send PING and waitFor("PONG")
+    - when client is idle, we have a 1m+timeout timer that will kill the connection
+    - when server is idle, it has a 1m+timeout timer that will kill the connection; it resets every time we handle a packet (including PING)
+    Problem:
+    - connetion could hang while we're e.g. receiving a file
+
+
 
 
 TODO:

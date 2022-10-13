@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"unisync/commands"
 	"unisync/filelist"
 	"unisync/node"
@@ -27,52 +26,53 @@ func (s *Server) Run() error {
 	defer s.CloseReceiveFile(nil)
 
 	for {
-		line, err := s.In.ReadString('\n')
-		if err != nil {
-			return err
-		}
-		line = strings.TrimSpace(line)
-		if len(line) == 0 {
-			continue
-		}
-
-		err = s.handle(line)
-		if err != nil {
-			if errors.Is(err, node.ErrDeep) {
+		select {
+		case packet := <-s.Packets:
+			err := s.handle(packet)
+			if err != nil {
 				return err
-			} else {
-				s.SendErr(err)
 			}
+
+		case <-s.Watcher.C:
+			err := s.handleWatch()
+			if err != nil {
+				return err
+			}
+
+		case err := <-s.Errors:
+			return err
 		}
 	}
 }
 
-func (s *Server) handle(line string) error {
-	words := strings.Fields(line)
-	cmd := strings.ToUpper(words[0])
-	json := strings.TrimSpace(strings.TrimPrefix(line, cmd))
+func (s *Server) handleWatch() error {
+	return s.SendCmd(&commands.FsEvent{})
+}
 
-	if cmd != "HELLO" && !s.loggedIn {
+func (s *Server) handle(packet *node.Packet) error {
+	cmd := packet.Command
+
+	if cmd.CmdType() != "HELLO" && !s.loggedIn {
 		return fmt.Errorf("must log in with HELLO first")
 	}
 
-	switch cmd {
+	switch cmd.CmdType() {
 	case "HELLO":
-		return s.handleHELLO(json)
+		return s.handleHELLO(cmd)
 	case "REQLIST":
-		return s.handleREQLIST(json)
+		return s.handleREQLIST(cmd)
 	case "MKDIR":
-		return s.handleMKDIR(json)
+		return s.handleMKDIR(cmd)
 	case "SYMLINK":
-		return s.handleSYMLINK(json)
+		return s.handleSYMLINK(cmd)
 	case "CHMOD":
-		return s.handleCHMOD(json)
+		return s.handleCHMOD(cmd)
 	case "DEL":
-		return s.handleDEL(json)
+		return s.handleDEL(cmd)
 	case "PULL":
-		return s.handlePULL(json)
+		return s.handlePULL(cmd)
 	case "PUSH":
-		return s.handlePUSH(json)
+		return s.handlePUSH(cmd, packet.Buffer)
 	default:
 		return fmt.Errorf("invalid command")
 	}
@@ -80,15 +80,14 @@ func (s *Server) handle(line string) error {
 	return nil
 }
 
-func (s *Server) handleHELLO(json string) error {
-	cmd := &commands.Hello{}
-	err := commands.Parse(json, cmd)
+func (s *Server) handleHELLO(cmd commands.Command) error {
+	hello := cmd.(*commands.Hello)
+
+	s.Config = hello.Config
+	err := s.Config.Validate()
 	if err != nil {
 		return err
 	}
-
-	s.Config = cmd.Config
-	s.Config.Validate()
 
 	err = s.SetBasepath(s.Config.Remote)
 	if err != nil {
@@ -105,14 +104,11 @@ func (s *Server) handleHELLO(json string) error {
 	return nil
 }
 
-func (s *Server) handleREQLIST(json string) error {
-	cmd := &commands.ReqList{}
-	err := commands.Parse(json, cmd)
-	if err != nil {
-		return err
-	}
+func (s *Server) handleREQLIST(cmd commands.Command) error {
+	s.Watcher.Ready()
 
-	list, err := filelist.Make(s.Path(cmd.Path), s.Config.Ignore)
+	reqlist := cmd.(*commands.ReqList)
+	list, err := filelist.Make(s.Path(reqlist.Path), s.Config.Ignore)
 	if err != nil {
 		return err
 	}
@@ -126,103 +122,67 @@ func (s *Server) handleREQLIST(json string) error {
 	return nil
 }
 
-func (s *Server) handleMKDIR(json string) error {
-	cmd := &commands.Mkdir{}
-	err := commands.Parse(json, cmd)
-	if err != nil {
-		return err
-	}
+func (s *Server) handleMKDIR(cmd commands.Command) error {
+	mkdir := cmd.(*commands.Mkdir)
 
-	for _, dir := range cmd.Dirs {
+	for _, dir := range mkdir.Dirs {
 		err := s.Mkdir(dir.Path, dir.Mode)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = s.SendString("OK")
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.SendCmd(&commands.Ok{})
 }
 
-func (s *Server) handleSYMLINK(json string) error {
-	cmd := &commands.Symlink{}
-	err := commands.Parse(json, cmd)
-	if err != nil {
-		return err
-	}
+func (s *Server) handleSYMLINK(cmd commands.Command) error {
+	symlink := cmd.(*commands.Symlink)
 
-	for _, link := range cmd.Links {
+	for _, link := range symlink.Links {
 		err := s.Symlink(link.Symlink, link.Path)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = s.SendString("OK")
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.SendCmd(&commands.Ok{})
 }
 
-func (s *Server) handleCHMOD(json string) error {
-	cmd := &commands.Chmod{}
-	err := commands.Parse(json, cmd)
-	if err != nil {
-		return err
-	}
+func (s *Server) handleCHMOD(cmd commands.Command) error {
+	chmod := cmd.(*commands.Chmod)
 
-	for _, action := range cmd.Actions {
+	for _, action := range chmod.Actions {
 		err := s.Chmod(action.Path, action.Mode)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = s.SendString("OK")
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.SendCmd(&commands.Ok{})
 }
 
-func (s *Server) handleDEL(json string) error {
-	cmd := &commands.Del{}
-	err := commands.Parse(json, cmd)
-	if err != nil {
-		return err
-	}
+func (s *Server) handleDEL(cmd commands.Command) error {
+	del := cmd.(*commands.Del)
 
-	for _, path := range cmd.Paths {
+	for _, path := range del.Paths {
 		err := os.Remove(s.Path(path))
 		if err != nil {
 			return err
 		}
 	}
 
-	err = s.SendString("OK")
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.SendCmd(&commands.Ok{})
 }
 
-func (s *Server) handlePULL(json string) error {
-	cmd := &commands.Pull{}
-	err := commands.Parse(json, cmd)
-	if err != nil {
-		return err
-	}
+func (s *Server) handlePULL(cmd commands.Command) error {
+	pull := cmd.(*commands.Pull)
 
-	if len(cmd.Paths) == 0 {
+	if len(pull.Paths) == 0 {
 		return fmt.Errorf("PULL command must specify at least 1 path")
 	}
 
-	for _, path := range cmd.Paths {
-		err = s.SendFile(path)
+	for _, path := range pull.Paths {
+		err := s.SendFile(path)
 		if err != nil {
 			if errors.Is(err, node.ErrDeep) {
 				return err
@@ -235,23 +195,7 @@ func (s *Server) handlePULL(json string) error {
 	return nil
 }
 
-func (s *Server) handlePUSH(json string) error {
-	cmd := &commands.Push{}
-	err := commands.Parse(json, cmd)
-	if err != nil {
-		return err
-	}
-
-	buf := make([]byte, cmd.Length)
-	_, err = io.ReadAtLeast(s.In, buf, len(buf))
-	if err != nil {
-		return err
-	}
-
-	err = s.ReceiveFile(cmd, buf)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (s *Server) handlePUSH(cmd commands.Command, buf []byte) error {
+	push := cmd.(*commands.Push)
+	return s.ReceiveFile(push, buf)
 }

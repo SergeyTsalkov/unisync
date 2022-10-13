@@ -3,7 +3,6 @@ package client
 import (
 	"fmt"
 	"io"
-	"strings"
 	"unisync/commands"
 	"unisync/config"
 	"unisync/filelist"
@@ -31,78 +30,44 @@ func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
 }
 
 func (c *Client) RunHello() error {
-	cmd := &commands.Hello{c.Config}
-	err := c.SendCmd(cmd)
+	hello := &commands.Hello{c.Config}
+	err := c.SendCmd(hello)
 	if err != nil {
 		return err
 	}
 
-	whatsup := &commands.Whatsup{}
-	err = c.WaitForCmd(whatsup)
+	cmd, _, err := c.WaitFor("WHATSUP")
 	if err != nil {
 		return err
 	}
 
+	whatsup := cmd.(*commands.Whatsup)
 	c.remoteBasepath = whatsup.Basepath
 	return nil
 }
 
 func (c *Client) RunReqList() (filelist.FileList, error) {
-	cmd := &commands.ReqList{}
-	err := c.SendCmd(cmd)
+	reqlist := &commands.ReqList{}
+	err := c.SendCmd(reqlist)
 	if err != nil {
 		return nil, err
 	}
 
-	reply := &commands.ResList{}
-	err = c.WaitForCmd(reply)
+	cmd, _, err := c.WaitFor("RESLIST")
 	if err != nil {
 		return nil, err
 	}
 
+	reply := cmd.(*commands.ResList)
 	return reply.FileList, nil
 }
 
-func (c *Client) GetCommand() (cmd string, json string, err error) {
-	var line string
+func (c *Client) WaitFor(expectCmd string) (commands.Command, []byte, error) {
+	packet := <-c.Packets
 
-	for {
-		line, err = c.In.ReadString('\n')
-		if err != nil {
-			return
-		}
-		line = strings.TrimSpace(line)
-		if len(line) == 0 {
-			continue
-		}
-
-		fmt.Printf("<- %v\n", line)
-
-		words := strings.Fields(line)
-		cmd = strings.ToUpper(words[0])
-		json = strings.TrimSpace(strings.TrimPrefix(line, cmd))
-		return
-	}
-}
-
-func (c *Client) WaitForCmd(ptr commands.Command) error {
-	json, err := c.WaitFor(ptr.CmdType())
-	if err != nil {
-		return err
+	if cmdType := packet.Command.CmdType(); cmdType != expectCmd {
+		return nil, nil, fmt.Errorf("expected %v from server but got %v", expectCmd, cmdType)
 	}
 
-	return commands.Parse(json, ptr)
-}
-
-func (c *Client) WaitFor(expectCmd string) (json string, err error) {
-	var cmd string
-	cmd, json, err = c.GetCommand()
-	if err != nil {
-		return
-	}
-	if cmd != expectCmd {
-		return "", fmt.Errorf("expected %v from server but got %v", expectCmd, cmd)
-	}
-
-	return
+	return packet.Command, packet.Buffer, nil
 }

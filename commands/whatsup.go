@@ -8,3 +8,7 @@ type Whatsup struct {
 func (c *Whatsup) CmdType() string {
 	return "WHATSUP"
 }
+
+func (c *Whatsup) BodyLen() int {
+	return 0
+}

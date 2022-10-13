@@ -10,6 +10,10 @@ func (c *Del) CmdType() string {
 	return "DEL"
 }
 
+func (c *Del) BodyLen() int {
+	return 0
+}
+
 func MakeDel(items []*filelist.FileListItem) *Del {
 	if len(items) == 0 {
 		return nil

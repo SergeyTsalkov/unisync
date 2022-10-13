@@ -7,3 +7,7 @@ type ReqList struct {
 func (c *ReqList) CmdType() string {
 	return "REQLIST"
 }
+
+func (c *ReqList) BodyLen() int {
+	return 0
+}

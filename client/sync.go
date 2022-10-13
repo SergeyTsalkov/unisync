@@ -2,12 +2,10 @@ package client
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"unisync/commands"
 	"unisync/filelist"
-	"unisync/node"
 )
 
 func (c *Client) Sync() error {
@@ -67,7 +65,7 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 		if err != nil {
 			return err
 		}
-		_, err = c.WaitFor("OK")
+		_, _, err = c.WaitFor("OK")
 		if err != nil {
 			return err
 		}
@@ -86,7 +84,7 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 		if err != nil {
 			return err
 		}
-		_, err = c.WaitFor("OK")
+		_, _, err = c.WaitFor("OK")
 		if err != nil {
 			return err
 		}
@@ -105,7 +103,7 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 		if err != nil {
 			return err
 		}
-		_, err = c.WaitFor("OK")
+		_, _, err = c.WaitFor("OK")
 		if err != nil {
 			return err
 		}
@@ -124,7 +122,7 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 		if err != nil {
 			return err
 		}
-		_, err = c.WaitFor("OK")
+		_, _, err = c.WaitFor("OK")
 		if err != nil {
 			return err
 		}
@@ -150,22 +148,12 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 		}
 
 		for len(paths) > 0 {
-			push := &commands.Push{}
-			err = c.WaitForCmd(push)
+			cmd, buf, err := c.WaitFor("PUSH")
 			if err != nil {
 				return err
 			}
 
-			if push.Length > int64(len(node.Buffer)) {
-				return fmt.Errorf("Buffer length is %v, but needs to be at least %v", len(node.Buffer), push.Length)
-			}
-
-			buf := node.Buffer[0:push.Length]
-			_, err = io.ReadAtLeast(c.In, buf, len(buf))
-			if err != nil {
-				return err
-			}
-
+			push := cmd.(*commands.Push)
 			err = c.ReceiveFile(push, buf)
 			if err != nil {
 				return err

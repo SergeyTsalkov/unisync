@@ -53,7 +53,7 @@ func (n *Node) SendFile(path string) error {
 
 		push := &commands.Push{
 			Path:       path,
-			Length:     int64(len),
+			Length:     len,
 			ModifiedAt: info.ModTime().Unix(),
 			Mode:       mode.Perm(),
 			More:       more,

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 )
 
 // type CommandType interface {
@@ -12,6 +13,7 @@ import (
 
 type Command interface {
 	CmdType() string
+	BodyLen() int
 }
 
 func Encode(c Command) string {
@@ -23,14 +25,57 @@ func Encode(c Command) string {
 	return c.CmdType() + " " + string(bytes)
 }
 
-func Parse(str string, ptr Command) error {
-	if str == "" {
-		return nil
+// func Parse(str string, ptr Command) error {
+// 	if str == "" {
+// 		return nil
+// 	}
+
+// 	err := json.Unmarshal([]byte(str), ptr)
+// 	if err != nil {
+// 		return fmt.Errorf("invalid json: %w", err)
+// 	}
+// 	return nil
+// }
+
+func Parse(str string) (cmd Command, err error) {
+	str = strings.TrimSpace(str)
+	word, jsonString, _ := strings.Cut(str, " ")
+	word = strings.TrimSpace(strings.ToUpper(word))
+	jsonString = strings.TrimSpace(jsonString)
+
+	switch word {
+	case "CHMOD":
+		cmd = &Chmod{}
+	case "DEL":
+		cmd = &Del{}
+	case "ERR":
+		cmd = &Error{}
+	case "HELLO":
+		cmd = &Hello{}
+	case "MKDIR":
+		cmd = &Mkdir{}
+	case "OK":
+		cmd = &Ok{}
+	case "PULL":
+		cmd = &Pull{}
+	case "PUSH":
+		cmd = &Push{}
+	case "REQLIST":
+		cmd = &ReqList{}
+	case "RESLIST":
+		cmd = &ResList{}
+	case "SYMLINK":
+		cmd = &Symlink{}
+	case "WHATSUP":
+		cmd = &Whatsup{}
+	default:
+		err = fmt.Errorf("invalid command %v", word)
 	}
 
-	err := json.Unmarshal([]byte(str), ptr)
 	if err != nil {
-		return fmt.Errorf("invalid json: %w", err)
+		return
 	}
-	return nil
+
+	err = json.Unmarshal([]byte(jsonString), cmd)
+	return
 }

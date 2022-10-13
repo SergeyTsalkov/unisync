@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"unisync/config"
+	"unisync/watcher"
 )
 
 var Buffer = make([]byte, 1000000)
@@ -19,17 +20,33 @@ type Node struct {
 	Debug    bool
 	IsServer bool
 	Config   *config.Config
-	basepath string
+	Packets  chan *Packet
+	Errors   chan error
+	Watcher  *watcher.Watcher
 
+	basepath        string
 	receiveFile     *os.File
 	receiveFullpath string
 }
 
 func New(in io.Reader, out io.Writer) *Node {
-	return &Node{In: bufio.NewReader(in), Out: out}
+	node := &Node{
+		In:      bufio.NewReader(in),
+		Out:     out,
+		Packets: make(chan *Packet),
+		Errors:  make(chan error),
+		Watcher: watcher.New(),
+	}
+
+	go node.InputReader()
+	return node
 }
 
 func (n *Node) SetBasepath(basepath string) error {
+	if n.basepath != "" {
+		return fmt.Errorf("basepath is already set")
+	}
+
 	var err error
 	basepath, err = filepath.Abs(basepath)
 	if err != nil {
@@ -43,6 +60,12 @@ func (n *Node) SetBasepath(basepath string) error {
 	if !info.IsDir() {
 		return fmt.Errorf("%v is not a directory", basepath)
 	}
+
+	err = n.Watcher.Start(basepath, n.Config.Ignore)
+	if err != nil {
+		return err
+	}
+
 	n.basepath = basepath
 	return nil
 }

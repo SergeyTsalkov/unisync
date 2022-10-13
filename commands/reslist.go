@@ -9,3 +9,7 @@ type ResList struct {
 func (c *ResList) CmdType() string {
 	return "RESLIST"
 }
+
+func (c *ResList) BodyLen() int {
+	return 0
+}

@@ -17,6 +17,10 @@ func (c *Symlink) CmdType() string {
 	return "SYMLINK"
 }
 
+func (c *Symlink) BodyLen() int {
+	return 0
+}
+
 func MakeSymlink(items []*filelist.FileListItem) *Symlink {
 	if len(items) == 0 {
 		return nil

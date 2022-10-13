@@ -18,6 +18,10 @@ func (c *Mkdir) CmdType() string {
 	return "MKDIR"
 }
 
+func (c *Mkdir) BodyLen() int {
+	return 0
+}
+
 func MakeMkdir(items []*filelist.FileListItem) *Mkdir {
 	if len(items) == 0 {
 		return nil

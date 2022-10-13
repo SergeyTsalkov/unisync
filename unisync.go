@@ -69,4 +69,6 @@ func runClient() {
 		log.Fatalln(err)
 	}
 
+	select {}
+
 }

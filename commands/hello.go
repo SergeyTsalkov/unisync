@@ -9,3 +9,7 @@ type Hello struct {
 func (c *Hello) CmdType() string {
 	return "HELLO"
 }
+
+func (c *Hello) BodyLen() int {
+	return 0
+}
