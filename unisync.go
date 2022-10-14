@@ -59,16 +59,9 @@ func runClient() {
 		log.Fatalln(err)
 	}
 
-	err = c.RunHello()
+	err = c.Run()
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	err = c.Sync()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	select {}
 
 }

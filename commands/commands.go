@@ -50,6 +50,8 @@ func Parse(str string) (cmd Command, err error) {
 		cmd = &Del{}
 	case "ERR":
 		cmd = &Error{}
+	case "FSEVENT":
+		cmd = &FsEvent{}
 	case "HELLO":
 		cmd = &Hello{}
 	case "MKDIR":

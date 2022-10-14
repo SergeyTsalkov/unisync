@@ -9,6 +9,7 @@ import (
 )
 
 func (c *Client) Sync() error {
+	c.Watcher.Ready()
 
 	for tries := 1; tries < 3; tries++ {
 		syncplan, localList, err := c.MakeSyncPlan()

@@ -23,42 +23,9 @@ example:
 FSWATCH:
   - when server sends FSEVENT packet, it shouldn't send any more until it gets REQINFO packet
   - fsevent should be channel with buffer of 1; all sends to it should be send-or-give-up
-
-WATCHER CLASS:
-  w.C := chan with buffer 1
-
-  main loop:
-    ready := atomic.Bool{}
-    for event <- events:
-      if ready.Load() == true && !gitignore.!MatchAny():
-        send(event)
-        ready.Store(false)
-    
-  send(event):
-    switch{
-      w.C <- event
-      default:
-    }
-    
-    
-  ready():
-    ready.Store(true)
+  - when client receives FSEVENT (or client-side event), ignore all others until we start next sync
 
 
-FSWATCH SERVER:
-  
-  main loop:
-    switch {
-      packet := <- packets:
-        handle(packet)
-      fsevent := <- fsevents:
-        handleEvent(fsevent): send FSEVENT, don't send anymore until we get a REQINFO packet
-      error := <- node.errors:
-        return err
-    }
-
-  handle(packet):
-    - when we get REQINFO, set watcher.Ready() before replying
 
 FSWATCH CLIENT:
   problem:

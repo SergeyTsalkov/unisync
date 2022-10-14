@@ -114,12 +114,7 @@ func (s *Server) handleREQLIST(cmd commands.Command) error {
 	}
 
 	reply := &commands.ResList{list}
-	err = s.SendCmd(reply)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.SendCmd(reply)
 }
 
 func (s *Server) handleMKDIR(cmd commands.Command) error {

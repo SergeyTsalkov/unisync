@@ -13,20 +13,60 @@ type Client struct {
 	*node.Node
 	cache          filelist.FileList
 	remoteBasepath string
+	waitForC       chan *node.Packet
 }
 
 func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
-	node := node.New(in, out)
-	node.Debug = true
-	node.Config = config
-	client := &Client{Node: node}
+	n := node.New(in, out)
+	n.Debug = true
+	n.Config = config
+	client := &Client{
+		Node:     n,
+		waitForC: make(chan *node.Packet),
+	}
 
 	err := client.SetBasepath(config.Local)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to set basepath: %w", err)
 	}
 
+	go client.PacketReader()
 	return client, nil
+}
+
+// separate goroutine
+func (c *Client) PacketReader() {
+	for packet := range c.Packets {
+		switch packet.Command.CmdType() {
+		case "FSEVENT":
+			c.Watcher.Send("")
+
+		default:
+			c.waitForC <- packet
+		}
+	}
+}
+
+func (c *Client) Run() error {
+	if err := c.RunHello(); err != nil {
+		return err
+	}
+	if err := c.Sync(); err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case <-c.Watcher.C:
+			if err := c.Sync(); err != nil {
+				return err
+			}
+		case err := <-c.Errors:
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (c *Client) RunHello() error {
@@ -63,7 +103,7 @@ func (c *Client) RunReqList() (filelist.FileList, error) {
 }
 
 func (c *Client) WaitFor(expectCmd string) (commands.Command, []byte, error) {
-	packet := <-c.Packets
+	packet := <-c.waitForC
 
 	if cmdType := packet.Command.CmdType(); cmdType != expectCmd {
 		return nil, nil, fmt.Errorf("expected %v from server but got %v", expectCmd, cmdType)

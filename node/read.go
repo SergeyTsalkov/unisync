@@ -3,6 +3,7 @@ package node
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"unisync/commands"
 )
@@ -12,6 +13,7 @@ type Packet struct {
 	Buffer  []byte
 }
 
+// separate goroutine
 func (n *Node) InputReader() {
 	var err error
 
@@ -27,7 +29,7 @@ func (n *Node) InputReader() {
 		}
 
 		if n.Debug {
-			fmt.Printf("<- %v\n", line)
+			fmt.Fprintf(os.Stderr, "<- %v\n", line)
 		}
 
 		var cmd commands.Command
