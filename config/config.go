@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"unisync/ini"
+	"unisync/log"
 )
 
 type Config struct {

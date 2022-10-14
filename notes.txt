@@ -20,65 +20,6 @@ example:
   unisync -stopall
   unisync -status (list jobs running in background)
 
-FSWATCH:
-  - when server sends FSEVENT packet, it shouldn't send any more until it gets REQINFO packet
-  - fsevent should be channel with buffer of 1; all sends to it should be send-or-give-up
-  - when client receives FSEVENT (or client-side event), ignore all others until we start next sync
-
-
-
-FSWATCH CLIENT:
-  problem:
-    - sync() needs to be able to call waitFor()
-    - waitFor() must return awaited packet, while setting aside FSEVENT
-    - FSEVENT packet might come in while we're waiting for a different packet
-
-  network read loop (own channel): same as server
-
-  
-  handlePacket() (own channel):
-    for packet <- packets {
-      if packet == PONG: // do nothing
-      else if packet == FSEVENT: TryChan(fsevents, RemoteEvent{})
-      else: waitable <- packet
-    }
-
-
-
-  waitFor(packetType) (main channel):
-    packet <- waitable
-    if packet.Type() != packetType: return err wrong packet
-    return packet
-  
-
-  main loop:
-    sync()
-
-    for event := range fsevents {
-      // might represent server event through FSEVENT, or local event from watcher
-      sync()
-    }
-
-  sync():
-    - set watcher.Ready() when starting
-
-
-Packet {
-  cmd *Command
-  raw []byte
-  extra []byte
-}
-
-Problem: waitFor("RESLIST")
-Option 1: Command{} has Body []byte to store body
-  cmd, err := waitFor("RESLIST")
-  list := cmd.(*command.ResList)
-Option 2: Packet{} has raw []byte to store raw command
-  cmd := commands.ResList{}
-  err := waitFor(&cmd)
-  Problem: it means Command{} is decoded twice; would be nice to preserve it the first time
-
-
 
 
 WHEN TO PING/PONG?
@@ -97,19 +38,15 @@ TODO:
   - handle timeouts: on connect (regardless of method); use PING once a minute to catch disconects at any point
   - nativessh method
   - direct / directtls methods
-  - handle fswatch events on both sides
   - work without config file, from command line; choose cache name intelligently
+  - detect CHMOD and sync
 
   
 
   - progress bar, nicer-looking console progress on sync
     maybe send PROGRESS {path: bigfile.txt, progress: 5} every second if receiving file takes more than 1 second
     will need to send size as part of PUSH so other side knows expected file size (even if it's not guaranteed)
-    <- thisfile.txt
-    -> somedir/thatfile.txt
-    <- DEL otherfile.txt
-    -> CHMOD asfasf.txt rw-r--r--
-    <- [5%] bigfile.txt
+    
 
   - client should delete any .unisync-tmp files on abrupt exit, including if user hits Ctrl+C
 

@@ -2,7 +2,6 @@ package filelist
 
 import (
 	"io/fs"
-	"log"
 	"unisync/config"
 )
 
@@ -126,7 +125,7 @@ func (b *SyncPlanBuilder) preferLocal(local, remote *FileListItem) bool {
 	case "remote":
 		return false
 	default:
-		log.Fatalln("config.prefer must be one of: newest, oldest, local, remote")
+		panic("config.prefer must be one of: newest, oldest, local, remote")
 	}
 
 	return true

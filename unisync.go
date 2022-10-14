@@ -2,10 +2,10 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"unisync/client"
 	"unisync/config"
+	"unisync/log"
 	"unisync/server"
 	"unisync/sshclient"
 )
@@ -28,6 +28,8 @@ func main() {
 }
 
 func runServer() {
+	log.Add(os.Stderr, log.Warn, "")
+
 	s := server.New(os.Stdin, os.Stdout)
 	err := s.Run()
 	if err != nil {
@@ -36,17 +38,12 @@ func runServer() {
 }
 
 func runClient() {
+	log.Add(os.Stdout, log.Notice, "")
+
 	conf, err := config.Parse("test")
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	// localList, err := filelist.Make(conf.Local)
-	// if err != nil {
-	// 	log.Fatalln(err)
-	// }
-	// fmt.Println(localList.Encode())
-	// os.Exit(0)
 
 	sshc := sshclient.New(conf.Username, conf.Host)
 	err = sshc.Run()

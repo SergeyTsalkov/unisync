@@ -2,11 +2,10 @@ package sshclient
 
 import (
 	"bufio"
-	"fmt"
 	"io"
-	"log"
 	"os/exec"
 	"strings"
+	"unisync/log"
 )
 
 type SSHClient struct {
@@ -58,7 +57,7 @@ func (c *SSHClient) Wait() {
 		line = strings.TrimSpace(line)
 
 		if line != "" {
-			fmt.Println("Server Error:", line)
+			log.Warnln("Server Error:", line)
 		}
 
 		if err != nil {

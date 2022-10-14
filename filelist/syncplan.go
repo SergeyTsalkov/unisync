@@ -1,7 +1,6 @@
 package filelist
 
 import (
-	"fmt"
 	"sort"
 )
 
@@ -84,39 +83,4 @@ func (plan *SyncPlan) IsSynced() bool {
 		len(plan.RemoteChmod) == 0 &&
 		len(plan.LocalDel) == 0 &&
 		len(plan.RemoteDel) == 0
-}
-
-func (p *SyncPlan) Show() {
-	if len(p.PullFile) > 0 {
-		fmt.Println("Pull files:")
-
-		for _, file := range p.PullFile {
-			fmt.Println(file.Path)
-		}
-	}
-
-	if len(p.PushFile) > 0 {
-		fmt.Println("Push files:")
-
-		for _, file := range p.PushFile {
-			fmt.Println(file.Path)
-		}
-	}
-
-	if len(p.LocalMkdir) > 0 {
-		fmt.Println("Local Mkdir:")
-
-		for _, file := range p.LocalMkdir {
-			fmt.Println(file.Path)
-		}
-	}
-
-	if len(p.RemoteMkdir) > 0 {
-		fmt.Println("Remote Mkdir:")
-
-		for _, file := range p.RemoteMkdir {
-			fmt.Println(file.Path)
-		}
-	}
-
 }

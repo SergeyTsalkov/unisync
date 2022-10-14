@@ -1,11 +1,10 @@
 package node
 
 import (
-	"fmt"
 	"io"
-	"os"
 	"strings"
 	"unisync/commands"
+	"unisync/log"
 )
 
 type Packet struct {
@@ -28,9 +27,7 @@ func (n *Node) InputReader() {
 			continue
 		}
 
-		if n.Debug {
-			fmt.Fprintf(os.Stderr, "<- %v\n", line)
-		}
+		log.Debugf("<- %v\n", line)
 
 		var cmd commands.Command
 		cmd, err = commands.Parse(line)

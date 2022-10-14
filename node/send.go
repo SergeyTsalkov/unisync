@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"runtime"
 	"unisync/commands"
@@ -32,7 +31,7 @@ func (n *Node) SendFile(path string) error {
 	defer func() {
 		err := file.Close()
 		if err != nil {
-			log.Fatalln("err closing file", path, ":", err)
+			panic("error closing file: " + err.Error())
 		}
 	}()
 

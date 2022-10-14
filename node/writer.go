@@ -1,11 +1,10 @@
 package node
 
 import (
-	"fmt"
 	"io"
-	"os"
 	"strings"
 	"unisync/commands"
+	"unisync/log"
 )
 
 func (n *Node) SendCmdBuf(cmd commands.Command, buf []byte) error {
@@ -15,10 +14,7 @@ func (n *Node) SendCmdBuf(cmd commands.Command, buf []byte) error {
 	}
 
 	if len(buf) > 0 {
-		if n.Debug {
-			fmt.Fprintf(os.Stderr, "-> [%v bytes]\n", len(buf))
-		}
-
+		log.Debugf("-> [%v bytes]\n", len(buf))
 		_, err = n.Out.Write(buf)
 		if err != nil {
 			return &DeepError{err}
@@ -35,10 +31,7 @@ func (n *Node) SendCmd(cmd commands.Command) error {
 func (n *Node) SendString(str string) error {
 	str = strings.TrimSpace(str)
 
-	if n.Debug {
-		fmt.Fprintf(os.Stderr, "-> %v\n", str)
-	}
-
+	log.Debugf("-> %v\n", str)
 	_, err := io.WriteString(n.Out, str+"\n")
 	if err != nil {
 		return &DeepError{err}

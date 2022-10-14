@@ -3,7 +3,6 @@ package commands
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 )
 
@@ -19,7 +18,7 @@ type Command interface {
 func Encode(c Command) string {
 	bytes, err := json.Marshal(c)
 	if err != nil {
-		log.Fatalln(err)
+		panic(err)
 	}
 
 	return c.CmdType() + " " + string(bytes)

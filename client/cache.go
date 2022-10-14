@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"unisync/config"
 	"unisync/filelist"
+	"unisync/log"
 )
 
 type StoredCache struct {
@@ -37,12 +37,12 @@ func (c *Client) Cache() (filelist.FileList, error) {
 		stored := &StoredCache{}
 		err = json.Unmarshal(bytes, stored)
 		if err != nil {
-			log.Println("Unable to parse cache file, will generate new one:", fullpath)
+			log.Warnln("Unable to parse cache file, will generate new one:", fullpath)
 			return nil, nil
 		}
 
 		if stored.Local != c.GetBasepath() || stored.Remote != c.remoteBasepath || stored.Host != c.Config.Host {
-			log.Println("Cache seems to be for a different server, will generate new one:", fullpath)
+			log.Warnln("Cache seems to be for a different server, will generate new one:", fullpath)
 			return nil, nil
 		}
 

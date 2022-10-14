@@ -6,6 +6,7 @@ import (
 	"unisync/commands"
 	"unisync/config"
 	"unisync/filelist"
+	"unisync/log"
 	"unisync/node"
 )
 
@@ -18,7 +19,6 @@ type Client struct {
 
 func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
 	n := node.New(in, out)
-	n.Debug = true
 	n.Config = config
 	client := &Client{
 		Node:     n,
@@ -56,6 +56,8 @@ func (c *Client) Run() error {
 	}
 
 	for {
+		log.Printf("%v %v", "[X]", "Synced. Watching for changes..")
+
 		select {
 		case <-c.Watcher.C:
 			if err := c.Sync(); err != nil {

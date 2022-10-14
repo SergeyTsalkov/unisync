@@ -2,14 +2,15 @@ package client
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"unisync/commands"
 	"unisync/filelist"
+	"unisync/log"
 )
 
 func (c *Client) Sync() error {
 	c.Watcher.Ready()
+	log.Printf("%v %v", "<->", "Comparing..")
 
 	for tries := 1; tries < 3; tries++ {
 		syncplan, localList, err := c.MakeSyncPlan()
@@ -54,12 +55,16 @@ func (c *Client) MakeSyncPlan() (*filelist.SyncPlan, filelist.FileList, error) {
 func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 	var err error
 	for _, file := range syncplan.LocalDel {
+		log.Printf("%v %v %v", "<-", "DEL", file.Path)
 		err = os.Remove(c.Path(file.Path))
 		if err != nil {
 			return err
 		}
 	}
 
+	for _, file := range syncplan.RemoteDel {
+		log.Printf("%v %v %v", "->", "DEL", file.Path)
+	}
 	if len(syncplan.RemoteDel) > 0 {
 		del := commands.MakeDel(syncplan.RemoteDel)
 		err = c.SendCmd(del)
@@ -73,12 +78,16 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 	}
 
 	for _, file := range syncplan.LocalMkdir {
+		log.Printf("%v %v %v", "<-", "MKDIR", file.Path)
 		err = c.Mkdir(file.Path, file.Mode)
 		if err != nil {
 			return err
 		}
 	}
 
+	for _, file := range syncplan.RemoteMkdir {
+		log.Printf("%v %v %v", "->", "MKDIR", file.Path)
+	}
 	if len(syncplan.RemoteMkdir) > 0 {
 		mkdir := commands.MakeMkdir(syncplan.RemoteMkdir)
 		err = c.SendCmd(mkdir)
@@ -92,12 +101,16 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 	}
 
 	for _, file := range syncplan.LocalMklink {
+		log.Printf("%v %v %v", "<-", "SYMLINK", file.Path)
 		err = c.Symlink(file.Symlink, file.Path)
 		if err != nil {
 			return err
 		}
 	}
 
+	for _, file := range syncplan.RemoteMklink {
+		log.Printf("%v %v %v", "->", "SYMLINK", file.Path)
+	}
 	if len(syncplan.RemoteMklink) > 0 {
 		symlink := commands.MakeSymlink(syncplan.RemoteMklink)
 		err = c.SendCmd(symlink)
@@ -111,12 +124,16 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 	}
 
 	for _, file := range syncplan.LocalChmod {
+		log.Printf("%v %v %v %v", "<-", "CHMOD", file.Path, file.Mode)
 		err = c.Chmod(file.Path, file.Mode)
 		if err != nil {
 			return err
 		}
 	}
 
+	for _, file := range syncplan.RemoteChmod {
+		log.Printf("%v %v %v %v", "->", "CHMOD", file.Path, file.Mode)
+	}
 	if len(syncplan.RemoteChmod) > 0 {
 		chmod := commands.MakeChmod(syncplan.RemoteChmod)
 		err = c.SendCmd(chmod)
@@ -130,9 +147,10 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 	}
 
 	for _, file := range syncplan.PushFile {
+		log.Printf("%v %v", "->", file.Path)
 		err = c.SendFile(file.Path)
 		if err != nil {
-			log.Println(err)
+			return err
 		}
 	}
 
@@ -155,6 +173,7 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 			}
 
 			push := cmd.(*commands.Push)
+			log.Printf("%v %v", "<-", push.Path)
 			err = c.ReceiveFile(push, buf)
 			if err != nil {
 				return err

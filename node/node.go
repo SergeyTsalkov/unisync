@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"path/filepath"
 	"unisync/config"
@@ -17,7 +16,6 @@ var Buffer = make([]byte, 1000000)
 type Node struct {
 	In       *bufio.Reader
 	Out      io.Writer
-	Debug    bool
 	IsServer bool
 	Config   *config.Config
 	Packets  chan *Packet
@@ -75,7 +73,7 @@ func (n *Node) GetBasepath() string {
 
 func (n *Node) Path(path string) string {
 	if n.basepath == "" {
-		log.Fatalln("basepath is not set")
+		panic("basepath is not set")
 	}
 
 	path = filepath.FromSlash(path)
