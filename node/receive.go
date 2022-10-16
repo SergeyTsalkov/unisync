@@ -2,48 +2,58 @@ package node
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 	"unisync/commands"
 )
 
-func (n *Node) ReceiveFile(cmd *commands.Push, buf []byte) error {
-	fullpath := n.Path(cmd.Path)
-
-	if n.receiveFile == nil {
-		n.openReceiveFile(cmd)
-	} else if n.receiveFullpath != fullpath {
-		return fmt.Errorf("can't RECEIVE %v: %v is still open", fullpath, n.receiveFullpath)
-	}
-
-	_, err := n.receiveFile.Write(buf)
+func (n *Node) ReceiveFile(push *commands.Push, waiter *sync.WaitGroup) error {
+	path := push.Path
+	fullpath := n.Path(path)
+	mtime := time.Unix(push.ModifiedAt, 0)
+	file, err := n.openReceiveFile(fullpath, push.Mode.Perm())
 	if err != nil {
 		return err
 	}
 
-	if !cmd.More {
-		err = n.CloseReceiveFile(cmd)
-		if err != nil {
-			return err
+	for {
+		if push.BodyLen() > 0 {
+			_, err := io.CopyN(file, n.In, int64(push.BodyLen()))
+			if err != nil {
+				return err
+			}
+			waiter.Done()
+		}
+
+		if push.More {
+			var cmd commands.Command
+			cmd, waiter, err = n.WaitFor("PUSH")
+			if err != nil {
+				return err
+			}
+			push = cmd.(*commands.Push)
+
+			if path != push.Path {
+				return fmt.Errorf("PUSH: was expecting file %v but got %v", path, push.Path)
+			}
+
+		} else {
+			break
 		}
 	}
 
-	return nil
+	return n.closeReceiveFile(file, fullpath, mtime)
 }
 
-func (n *Node) openReceiveFile(cmd *commands.Push) error {
-	fullpath := n.Path(cmd.Path)
-
-	if n.receiveFile != nil {
-		return fmt.Errorf("can't RECEIVE %v: %v is still open", fullpath, n.receiveFullpath)
-	}
-
+func (n *Node) openReceiveFile(fullpath string, receivedPerm fs.FileMode) (*os.File, error) {
 	var perm fs.FileMode
 	if info, err := os.Lstat(fullpath); err == nil {
 		if info.Mode().IsDir() {
-			return fmt.Errorf("can't RECEIVE %v: is a directory", fullpath)
+			return nil, fmt.Errorf("can't RECEIVE %v: is a directory", fullpath)
 		}
 		perm = info.Mode().Perm()
 	} else {
@@ -55,54 +65,40 @@ func (n *Node) openReceiveFile(cmd *commands.Push) error {
 	}
 
 	// if we got a mode of 0 (the sending side is Windows), just keep the mode we have
-	if cmd.Mode.Perm() != 0 {
-		perm = n.FileMask(perm, cmd.Mode)
+	if receivedPerm != 0 {
+		perm = n.FileMask(perm, receivedPerm)
 	}
 
 	dir, _ := filepath.Split(fullpath)
 	tempfullpath := filepath.Join(dir, ".unisync-tmp")
 
-	var err error
-	n.receiveFile, err = os.Create(tempfullpath)
+	file, err := os.Create(tempfullpath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	n.receiveFullpath = fullpath
-	err = n.receiveFile.Chmod(perm)
+	err = file.Chmod(perm)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return file, nil
 }
 
-func (n *Node) CloseReceiveFile(cmd *commands.Push) error {
-	file := n.receiveFile
-	if file == nil {
-		return nil
-	}
-
-	// always try to remove the tmpfile; this will fail if we've already moved it
-	defer os.Remove(file.Name())
-
+func (n *Node) closeReceiveFile(file *os.File, fullpath string, mtime time.Time) error {
 	err := file.Close()
 	if err != nil {
 		return err
 	}
 
-	if cmd != nil {
-		err = os.Rename(file.Name(), n.receiveFullpath)
-		if err != nil {
-			return err
-		}
-
-		err = os.Chtimes(n.receiveFullpath, time.Now(), time.Unix(cmd.ModifiedAt, 0))
-		if err != nil {
-			return err
-		}
+	err = os.Rename(file.Name(), fullpath)
+	if err != nil {
+		return err
 	}
 
-	n.receiveFile = nil
-	n.receiveFullpath = ""
+	err = os.Chtimes(fullpath, time.Now(), mtime)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

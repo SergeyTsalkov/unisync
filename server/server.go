@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 	"unisync/commands"
 	"unisync/filelist"
 	"unisync/node"
@@ -22,12 +23,9 @@ func New(in io.Reader, out io.Writer) *Server {
 }
 
 func (s *Server) Run() error {
-	// if a network error prevented a file from being fully transmitted, delete the tmpfile
-	defer s.CloseReceiveFile(nil)
-
 	for {
 		select {
-		case packet := <-s.Packets:
+		case packet := <-s.MainC:
 			err := s.handle(packet)
 			if err != nil {
 				return err
@@ -72,7 +70,7 @@ func (s *Server) handle(packet *node.Packet) error {
 	case "PULL":
 		return s.handlePULL(cmd)
 	case "PUSH":
-		return s.handlePUSH(cmd, packet.Buffer)
+		return s.handlePUSH(cmd, packet.Waiter)
 	default:
 		return fmt.Errorf("invalid command")
 	}
@@ -190,7 +188,7 @@ func (s *Server) handlePULL(cmd commands.Command) error {
 	return nil
 }
 
-func (s *Server) handlePUSH(cmd commands.Command, buf []byte) error {
+func (s *Server) handlePUSH(cmd commands.Command, waiter *sync.WaitGroup) error {
 	push := cmd.(*commands.Push)
-	return s.ReceiveFile(push, buf)
+	return s.ReceiveFile(push, waiter)
 }

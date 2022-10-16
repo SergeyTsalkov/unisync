@@ -1,15 +1,16 @@
 package node
 
 import (
-	"io"
+	"fmt"
 	"strings"
+	"sync"
 	"unisync/commands"
 	"unisync/log"
 )
 
 type Packet struct {
 	Command commands.Command
-	Buffer  []byte
+	Waiter  *sync.WaitGroup
 }
 
 // separate goroutine
@@ -38,17 +39,38 @@ func (n *Node) InputReader() {
 		packet := &Packet{Command: cmd}
 
 		if cmd.BodyLen() > 0 {
-			packet.Buffer = make([]byte, cmd.BodyLen())
-			_, err = io.ReadAtLeast(n.In, packet.Buffer, len(packet.Buffer))
-			if err != nil {
-				break
-			}
+			packet.Waiter = &sync.WaitGroup{}
+			packet.Waiter.Add(1)
 		}
 
-		n.Packets <- packet
+		if _, exists := n.sideCmatch[cmd.CmdType()]; exists {
+			n.SideC <- packet
+		} else {
+			n.MainC <- packet
+		}
+
+		if packet.Waiter != nil {
+			packet.Waiter.Wait()
+		}
 	}
 
 	if err != nil {
 		n.Errors <- err
 	}
+}
+
+func (n *Node) SetSideC(matches ...string) {
+	for _, match := range matches {
+		n.sideCmatch[match] = struct{}{}
+	}
+}
+
+func (c *Node) WaitFor(expectCmd string) (commands.Command, *sync.WaitGroup, error) {
+	packet := <-c.MainC
+
+	if cmdType := packet.Command.CmdType(); cmdType != expectCmd {
+		return nil, nil, fmt.Errorf("expected %v from server but got %v", expectCmd, cmdType)
+	}
+
+	return packet.Command, packet.Waiter, nil
 }

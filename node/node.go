@@ -18,22 +18,29 @@ type Node struct {
 	Out      io.Writer
 	IsServer bool
 	Config   *config.Config
-	Packets  chan *Packet
-	Errors   chan error
 	Watcher  *watcher.Watcher
+	basepath string
 
-	basepath        string
-	receiveFile     *os.File
-	receiveFullpath string
+	// most incoming packets go into MainC
+	MainC chan *Packet
+
+	// packets can be diverted to	SideC if they match SideCMatch
+	sideCmatch map[string]struct{}
+	SideC      chan *Packet
+
+	// packet reader errors will go into Errors channel
+	Errors chan error
 }
 
 func New(in io.Reader, out io.Writer) *Node {
 	node := &Node{
-		In:      bufio.NewReader(in),
-		Out:     out,
-		Packets: make(chan *Packet),
-		Errors:  make(chan error),
-		Watcher: watcher.New(),
+		In:         bufio.NewReader(in),
+		Out:        out,
+		MainC:      make(chan *Packet),
+		SideC:      make(chan *Packet),
+		sideCmatch: map[string]struct{}{},
+		Errors:     make(chan error),
+		Watcher:    watcher.New(),
 	}
 
 	go node.InputReader()

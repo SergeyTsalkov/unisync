@@ -21,6 +21,14 @@ example:
   unisync -status (list jobs running in background)
 
 
+SYNC PROGRESS REPORT
+  node.progress -- general progress channel? (can also get info from PROGRESS packets from server)
+
+  log.Println("<- receiving file")
+  go showprogress(node.progress, done) -- render progress bar until done channel is closed
+
+
+
 
 WHEN TO PING/PONG?
   Option 1:

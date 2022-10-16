@@ -14,16 +14,13 @@ type Client struct {
 	*node.Node
 	cache          filelist.FileList
 	remoteBasepath string
-	waitForC       chan *node.Packet
 }
 
 func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
 	n := node.New(in, out)
 	n.Config = config
-	client := &Client{
-		Node:     n,
-		waitForC: make(chan *node.Packet),
-	}
+	n.SetSideC("FSEVENT")
+	client := &Client{Node: n}
 
 	err := client.SetBasepath(config.Local)
 	if err != nil {
@@ -36,13 +33,13 @@ func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
 
 // separate goroutine
 func (c *Client) PacketReader() {
-	for packet := range c.Packets {
-		switch packet.Command.CmdType() {
+	for packet := range c.SideC {
+		switch cmdType := packet.Command.CmdType(); cmdType {
 		case "FSEVENT":
 			c.Watcher.Send("")
 
 		default:
-			c.waitForC <- packet
+			panic("invalid packet in SideC: " + cmdType)
 		}
 	}
 }
@@ -102,14 +99,4 @@ func (c *Client) RunReqList() (filelist.FileList, error) {
 
 	reply := cmd.(*commands.ResList)
 	return reply.FileList, nil
-}
-
-func (c *Client) WaitFor(expectCmd string) (commands.Command, []byte, error) {
-	packet := <-c.waitForC
-
-	if cmdType := packet.Command.CmdType(); cmdType != expectCmd {
-		return nil, nil, fmt.Errorf("expected %v from server but got %v", expectCmd, cmdType)
-	}
-
-	return packet.Command, packet.Buffer, nil
 }

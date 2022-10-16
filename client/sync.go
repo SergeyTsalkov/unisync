@@ -167,20 +167,19 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 		}
 
 		for len(paths) > 0 {
-			cmd, buf, err := c.WaitFor("PUSH")
+			cmd, waiter, err := c.WaitFor("PUSH")
 			if err != nil {
 				return err
 			}
 
 			push := cmd.(*commands.Push)
 			log.Printf("%v %v", "<-", push.Path)
-			err = c.ReceiveFile(push, buf)
+			err = c.ReceiveFile(push, waiter)
 			if err != nil {
 				return err
 			}
-			if !push.More {
-				delete(paths, push.Path)
-			}
+
+			delete(paths, push.Path)
 		}
 
 	}
