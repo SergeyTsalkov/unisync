@@ -9,4 +9,5 @@ require (
 	github.com/gosuri/uiprogress v0.0.2-0.20210317150916-484b9f69ea00 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	golang.org/x/sys v0.0.0-20220908164124-27713097b956 // indirect
+	golang.org/x/term v0.0.0-20220919170432-7a66f970e087 // indirect
 )
