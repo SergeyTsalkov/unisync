@@ -20,11 +20,12 @@ type Node struct {
 	Config   *config.Config
 	Watcher  *watcher.Watcher
 	basepath string
+	Progress chan int
 
 	// most incoming packets go into MainC
 	MainC chan *Packet
 
-	// packets can be diverted to	SideC if they match SideCMatch
+	// packets can be diverted to	SideC if they match sideCmatch
 	sideCmatch map[string]struct{}
 	SideC      chan *Packet
 
@@ -41,6 +42,7 @@ func New(in io.Reader, out io.Writer) *Node {
 		sideCmatch: map[string]struct{}{},
 		Errors:     make(chan error),
 		Watcher:    watcher.New(),
+		Progress:   make(chan int),
 	}
 
 	go node.InputReader()

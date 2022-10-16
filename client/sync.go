@@ -6,6 +6,8 @@ import (
 	"unisync/commands"
 	"unisync/filelist"
 	"unisync/log"
+
+	"github.com/gosuri/uiprogress"
 )
 
 func (c *Client) Sync() error {
@@ -174,7 +176,9 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 
 			push := cmd.(*commands.Push)
 			log.Printf("%v %v", "<-", push.Path)
+			stop := c.startProgressBar()
 			err = c.ReceiveFile(push, waiter)
+			stop()
 			if err != nil {
 				return err
 			}
@@ -185,4 +189,38 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 	}
 
 	return nil
+}
+
+func (c *Client) startProgressBar() func() {
+	var prog *uiprogress.Progress
+	var bar *uiprogress.Bar
+
+	done := make(chan struct{})
+	stop := func() {
+		done <- struct{}{}
+		<-done
+	}
+
+	go func() {
+		for {
+			select {
+			case progress := <-c.Progress:
+				if prog == nil {
+					prog = uiprogress.New()
+					bar = prog.AddBar(100).AppendCompleted().PrependElapsed()
+					prog.Start()
+				}
+				bar.Set(progress)
+			case <-done:
+				if prog != nil {
+					bar.Set(100)
+					prog.Stop()
+				}
+				close(done)
+				return
+			}
+		}
+	}()
+
+	return stop
 }

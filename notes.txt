@@ -22,10 +22,7 @@ example:
 
 
 SYNC PROGRESS REPORT
-  node.progress -- general progress channel? (can also get info from PROGRESS packets from server)
-
-  log.Println("<- receiving file")
-  go showprogress(node.progress, done) -- render progress bar until done channel is closed
+  <- myfile.txt [1MB/5MB] (20%) ETA: 20s
 
 
 

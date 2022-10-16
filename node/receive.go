@@ -9,13 +9,14 @@ import (
 	"sync"
 	"time"
 	"unisync/commands"
+	"unisync/progresswriter"
 )
 
 func (n *Node) ReceiveFile(push *commands.Push, waiter *sync.WaitGroup) error {
 	path := push.Path
 	fullpath := n.Path(path)
 	mtime := time.Unix(push.ModifiedAt, 0)
-	file, err := n.openReceiveFile(fullpath, push.Mode.Perm())
+	file, tempfullpath, err := n.openReceiveFile(fullpath, push.Mode.Perm(), push.Size)
 	if err != nil {
 		return err
 	}
@@ -46,14 +47,27 @@ func (n *Node) ReceiveFile(push *commands.Push, waiter *sync.WaitGroup) error {
 		}
 	}
 
-	return n.closeReceiveFile(file, fullpath, mtime)
+	err = file.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Rename(tempfullpath, fullpath)
+	if err != nil {
+		return err
+	}
+	err = os.Chtimes(fullpath, time.Now(), mtime)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (n *Node) openReceiveFile(fullpath string, receivedPerm fs.FileMode) (*os.File, error) {
+func (n *Node) openReceiveFile(fullpath string, receivedPerm fs.FileMode, size int64) (io.WriteCloser, string, error) {
 	var perm fs.FileMode
 	if info, err := os.Lstat(fullpath); err == nil {
 		if info.Mode().IsDir() {
-			return nil, fmt.Errorf("can't RECEIVE %v: is a directory", fullpath)
+			return nil, "", fmt.Errorf("can't RECEIVE %v: is a directory", fullpath)
 		}
 		perm = info.Mode().Perm()
 	} else {
@@ -74,31 +88,12 @@ func (n *Node) openReceiveFile(fullpath string, receivedPerm fs.FileMode) (*os.F
 
 	file, err := os.Create(tempfullpath)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	err = file.Chmod(perm)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return file, nil
-}
-
-func (n *Node) closeReceiveFile(file *os.File, fullpath string, mtime time.Time) error {
-	err := file.Close()
-	if err != nil {
-		return err
-	}
-
-	err = os.Rename(file.Name(), fullpath)
-	if err != nil {
-		return err
-	}
-
-	err = os.Chtimes(fullpath, time.Now(), mtime)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return progresswriter.New(file, size, n.Progress), tempfullpath, nil
 }
