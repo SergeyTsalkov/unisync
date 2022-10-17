@@ -21,18 +21,6 @@ example:
   unisync -status (list jobs running in background)
 
 
-SYNC PROGRESS REPORT
-<- myfile.txt
-   ETA: [4m33s] [=========>-----------] 57%
-
-w = overWriter.New()
-w.Write("stuff")
-w.Flush()
-w.Reset()
-
-
-
-
 
 WHEN TO PING/PONG?
   Option 1:
@@ -46,21 +34,20 @@ WHEN TO PING/PONG?
 
 
 TODO:
-  - dump server connection on error, auto reconect and retry
-  - handle timeouts: on connect (regardless of method); use PING once a minute to catch disconects at any point
+  - error handling
+    - dump server connection on error, auto reconect and retry
+    - handle timeouts: on connect (regardless of method); use PING once a minute to catch disconects at any point
+    - client should delete any .unisync-tmp files on abrupt exit, including if user hits Ctrl+C
+    - n.Errors channel should be monitored during all phases, including initial sync on client
+
+
   - nativessh method
   - direct / directtls methods
   - work without config file, from command line; choose cache name intelligently
   - detect CHMOD and sync
-
   
 
-  - progress bar, nicer-looking console progress on sync
-    maybe send PROGRESS {path: bigfile.txt, progress: 5} every second if receiving file takes more than 1 second
-    will need to send size as part of PUSH so other side knows expected file size (even if it's not guaranteed)
-    
-
-  - client should delete any .unisync-tmp files on abrupt exit, including if user hits Ctrl+C
+  
 
 
        

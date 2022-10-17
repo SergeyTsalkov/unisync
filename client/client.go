@@ -8,6 +8,7 @@ import (
 	"unisync/filelist"
 	"unisync/log"
 	"unisync/node"
+	"unisync/progresswriter"
 )
 
 type Client struct {
@@ -19,7 +20,7 @@ type Client struct {
 func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
 	n := node.New(in, out)
 	n.Config = config
-	n.SetSideC("FSEVENT")
+	n.SetSideC("FSEVENT", "PROGRESS")
 	client := &Client{Node: n}
 
 	err := client.SetBasepath(config.Local)
@@ -27,16 +28,18 @@ func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
 		return nil, fmt.Errorf("Unable to set basepath: %w", err)
 	}
 
-	go client.PacketReader()
 	return client, nil
 }
 
 // separate goroutine
-func (c *Client) PacketReader() {
+func (c *Client) SideChannelReader() {
 	for packet := range c.SideC {
 		switch cmdType := packet.Command.CmdType(); cmdType {
 		case "FSEVENT":
 			c.Watcher.Send("")
+
+		case "PROGRESS":
+			c.handlePROGRESS(packet.Command)
 
 		default:
 			panic("invalid packet in SideC: " + cmdType)
@@ -45,6 +48,8 @@ func (c *Client) PacketReader() {
 }
 
 func (c *Client) Run() error {
+	go c.SideChannelReader()
+
 	if err := c.RunHello(); err != nil {
 		return err
 	}
@@ -99,4 +104,13 @@ func (c *Client) RunReqList() (filelist.FileList, error) {
 
 	reply := cmd.(*commands.ResList)
 	return reply.FileList, nil
+}
+
+func (c *Client) handlePROGRESS(cmd commands.Command) {
+	progress := cmd.(*commands.Progress)
+
+	select {
+	case c.Progress <- progresswriter.Progress{progress.Percent, progress.Eta}:
+	default:
+	}
 }

@@ -57,6 +57,8 @@ func Parse(str string) (cmd Command, err error) {
 		cmd = &Mkdir{}
 	case "OK":
 		cmd = &Ok{}
+	case "PROGRESS":
+		cmd = &Progress{}
 	case "PULL":
 		cmd = &Pull{}
 	case "PUSH":

@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 	"unisync/config"
 	"unisync/progresswriter"
 	"unisync/watcher"
@@ -15,13 +16,14 @@ import (
 var Buffer = make([]byte, 1000000)
 
 type Node struct {
-	In       *bufio.Reader
-	Out      io.Writer
-	IsServer bool
-	Config   *config.Config
-	Watcher  *watcher.Watcher
-	basepath string
-	Progress chan progresswriter.Progress
+	In        *bufio.Reader
+	Out       io.Writer
+	IsServer  bool
+	Config    *config.Config
+	Watcher   *watcher.Watcher
+	basepath  string
+	Progress  chan progresswriter.Progress
+	writeLock *sync.Mutex
 
 	// most incoming packets go into MainC
 	MainC chan *Packet
@@ -44,6 +46,7 @@ func New(in io.Reader, out io.Writer) *Node {
 		Errors:     make(chan error),
 		Watcher:    watcher.New(),
 		Progress:   make(chan progresswriter.Progress),
+		writeLock:  &sync.Mutex{},
 	}
 
 	go node.InputReader()

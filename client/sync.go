@@ -150,7 +150,9 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 
 	for _, file := range syncplan.PushFile {
 		log.Printf("%v %v", "->", file.Path)
+		stop := c.startProgressBar()
 		err = c.SendFile(file.Path)
+		stop()
 		if err != nil {
 			return err
 		}
@@ -192,7 +194,8 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 }
 
 func (c *Client) startProgressBar() func() {
-	if !overwriter.IsTerminal() {
+	loglevel, ok := log.GetLevel(os.Stdout)
+	if !ok || loglevel > log.Notice || !overwriter.IsTerminal() {
 		return func() {}
 	}
 

@@ -54,6 +54,16 @@ func Add(w io.Writer, level uint8, ts string) {
 	Outputs = append(Outputs, &Output{w, level, ts})
 }
 
+func GetLevel(w io.Writer) (uint8, bool) {
+	for _, output := range Outputs {
+		if output.Writer == w {
+			return output.Level, true
+		}
+	}
+
+	return 0, false
+}
+
 func Debugln(a ...any) error {
 	return write(Debug, fmt.Sprintln(a...))
 }
