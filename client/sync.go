@@ -6,8 +6,8 @@ import (
 	"unisync/commands"
 	"unisync/filelist"
 	"unisync/log"
-
-	"github.com/gosuri/uiprogress"
+	"unisync/overwriter"
+	"unisync/progressbar"
 )
 
 func (c *Client) Sync() error {
@@ -192,8 +192,9 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 }
 
 func (c *Client) startProgressBar() func() {
-	var prog *uiprogress.Progress
-	var bar *uiprogress.Bar
+	if !overwriter.IsTerminal() {
+		return func() {}
+	}
 
 	done := make(chan struct{})
 	stop := func() {
@@ -205,17 +206,9 @@ func (c *Client) startProgressBar() func() {
 		for {
 			select {
 			case progress := <-c.Progress:
-				if prog == nil {
-					prog = uiprogress.New()
-					bar = prog.AddBar(100).AppendCompleted().PrependElapsed()
-					prog.Start()
-				}
-				bar.Set(progress)
+				progressbar.Draw(progress.Percent, progress.Eta)
 			case <-done:
-				if prog != nil {
-					bar.Set(100)
-					prog.Stop()
-				}
+				progressbar.Reset()
 				close(done)
 				return
 			}

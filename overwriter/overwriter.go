@@ -13,6 +13,18 @@ import (
 var buffer = &bytes.Buffer{}
 var lastLineCount = -1
 
+func IsTerminal() bool {
+	return term.IsTerminal(int(os.Stdout.Fd()))
+}
+
+func TerminalWidth() (int, error) {
+	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil {
+		return 0, err
+	}
+	return width, nil
+}
+
 func Println(a ...any) error {
 	_, err := io.WriteString(buffer, fmt.Sprintln(a...))
 	return err
@@ -61,7 +73,7 @@ func clear() error {
 }
 
 func countLines() (int, error) {
-	width, _, err := term.GetSize(int(os.Stdout.Fd()))
+	width, err := TerminalWidth()
 	if err != nil {
 		return 0, err
 	}
