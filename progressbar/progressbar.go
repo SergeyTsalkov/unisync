@@ -30,7 +30,7 @@ func Draw(progress int, eta int) error {
 	if progress == 100 {
 		part2 = fmt.Sprintf("[%v]", strings.Repeat("=", coreWidth))
 	} else if coreWidthFilled == 0 {
-		part2 = fmt.Sprintf("[%v]", strings.Repeat("-", coreWidth-coreWidthFilled))
+		part2 = fmt.Sprintf("[%v]", strings.Repeat("-", coreWidth))
 	} else {
 		part2 = fmt.Sprintf("[%v>%v]", strings.Repeat("=", coreWidthFilled-1), strings.Repeat("-", coreWidth-coreWidthFilled))
 	}
