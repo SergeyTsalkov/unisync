@@ -22,7 +22,8 @@ example:
 
 
 SYNC PROGRESS REPORT
-  <- myfile.txt [1MB/5MB] (20%) ETA: 20s
+<- myfile.txt
+   ETA: [4m33s] [=========>-----------] 57%
 
 w = overWriter.New()
 w.Write("stuff")
