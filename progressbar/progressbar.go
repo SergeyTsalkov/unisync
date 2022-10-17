@@ -2,6 +2,7 @@ package progressbar
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 	"unisync/overwriter"
@@ -25,14 +26,17 @@ func Draw(progress int, eta int) error {
 	part3 := fmt.Sprintf("ETA: %v", time.Second*time.Duration(eta))
 
 	coreWidth := width - len(part1) - len(part3) - 2
-	coreWidthFilled := int(float64(coreWidth) * (float64(progress) / float64(100)))
 
-	if progress == 100 {
-		part2 = fmt.Sprintf("[%v]", strings.Repeat("=", coreWidth))
-	} else if coreWidthFilled == 0 {
-		part2 = fmt.Sprintf("[%v]", strings.Repeat("-", coreWidth))
-	} else {
-		part2 = fmt.Sprintf("[%v>%v]", strings.Repeat("=", coreWidthFilled-1), strings.Repeat("-", coreWidth-coreWidthFilled))
+	if coreWidth > 0 {
+		coreWidthFilled := int(math.Round(float64(coreWidth) * (float64(progress) / float64(100))))
+
+		if progress == 100 {
+			part2 = fmt.Sprintf("[%v]", strings.Repeat("=", coreWidth))
+		} else if coreWidthFilled == 0 {
+			part2 = fmt.Sprintf("[%v]", strings.Repeat("-", coreWidth))
+		} else {
+			part2 = fmt.Sprintf("[%v>%v]", strings.Repeat("=", coreWidthFilled-1), strings.Repeat("-", coreWidth-coreWidthFilled))
+		}
 	}
 
 	err = overwriter.Println(part1, part2, part3)
