@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 	"unisync/commands"
+	"unisync/copy"
 	"unisync/progresswriter"
 )
 
@@ -23,7 +24,7 @@ func (n *Node) ReceiveFile(push *commands.Push, waiter *sync.WaitGroup) error {
 
 	for {
 		if push.BodyLen() > 0 {
-			_, err := io.CopyN(file, n.In, int64(push.BodyLen()))
+			_, err := copy.CopyNbuffer(file, n.In, int64(push.BodyLen()), Buffer)
 			if err != nil {
 				return err
 			}
