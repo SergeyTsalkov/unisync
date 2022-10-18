@@ -2,6 +2,7 @@ package sshclient
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"os/exec"
 	"strings"
@@ -18,8 +19,9 @@ type SSHClient struct {
 
 func New(username, host string) *SSHClient {
 	c := &SSHClient{}
-	sshto := username + "@" + host
-	c.cmd = exec.Command("ssh", "-e", "none", sshto, "unisync -stdserver")
+
+	cmd := strings.Split(fmt.Sprintf("-e none -o BatchMode=yes %v@%v unisync -stdserver", username, host), " ")
+	c.cmd = exec.Command("ssh", cmd...)
 	var err error
 
 	c.In, err = c.cmd.StdinPipe()
