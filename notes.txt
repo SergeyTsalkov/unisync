@@ -28,13 +28,14 @@ TODO:
     - client should delete any .unisync-tmp files on abrupt exit, including if user hits Ctrl+C
     - n.Errors channel should be monitored during all phases, including initial sync on client
 
-
-  - nativessh method
-  - direct / directtls methods
+  - connection methods
+    - nativessh method
+    - direct / directtls methods
+    - use keepalive on every connection method
+    
   - parse all command line options, including working without config file (will have to choose cache name)
-  - detect CHMOD and sync
-  - use keepalive on every connection method
-  - create copy.CopyNBuffer() function, use for both reading and writing to keep memory usage down
+
+  
 
   
 

@@ -29,7 +29,7 @@ func (w *Watcher) Start(basepath string, ignore []string) error {
 	w.basepath = basepath
 
 	go w.monitor()
-	err := notify.Watch(filepath.Join(basepath, "..."), w.events, notify.All)
+	err := notify.Watch(filepath.Join(basepath, "..."), w.events, events)
 	if err != nil {
 		close(w.events)
 	}
