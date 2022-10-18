@@ -33,7 +33,8 @@ TODO:
   - direct / directtls methods
   - parse all command line options, including working without config file (will have to choose cache name)
   - detect CHMOD and sync
-  - use keepalive on every connection method  
+  - use keepalive on every connection method
+  - create copy.CopyNBuffer() function, use for both reading and writing to keep memory usage down
 
   
 
