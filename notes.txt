@@ -21,18 +21,6 @@ example:
   unisync -status (list jobs running in background)
 
 
-
-WHEN TO PING/PONG?
-  Option 1:
-    - when client is idle, start 1 minute timer; when timer fires, send PING and waitFor("PONG")
-    - when client is idle, we have a 1m+timeout timer that will kill the connection
-    - when server is idle, it has a 1m+timeout timer that will kill the connection; it resets every time we handle a packet (including PING)
-    Problem:
-    - connetion could hang while we're e.g. receiving a file
-
-
-
-
 TODO:
   - error handling
     - dump server connection on error, auto reconect and retry
@@ -45,7 +33,7 @@ TODO:
   - direct / directtls methods
   - parse all command line options, including working without config file (will have to choose cache name)
   - detect CHMOD and sync
-  
+  - use keepalive on every connection method  
 
   
 
