@@ -29,7 +29,7 @@ func (c *Client) Cache() (filelist.FileList, error) {
 		bytes, err := os.ReadFile(fullpath)
 		if err != nil {
 			if errors.Is(err, fs.ErrNotExist) {
-				err = nil
+				return nil, nil
 			}
 			return nil, err
 		}
@@ -71,4 +71,9 @@ func (c *Client) SaveCache(cacheList filelist.FileList) error {
 
 	c.cache = cacheList
 	return nil
+}
+
+func (c *Client) RemoveCache() {
+	c.cache = nil
+	os.Remove(c.cacheFullpath())
 }

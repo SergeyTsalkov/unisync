@@ -44,6 +44,12 @@ func (c *Client) MakeSyncPlan() (*filelist.SyncPlan, filelist.FileList, error) {
 		return nil, nil, err
 	}
 
+	// if one side or the other is empty, don't use the cache
+	// we'll assume that we want the empty side repopulated, and never want the full side emptied
+	if len(localList) == 0 || len(remoteList) == 0 {
+		c.RemoveCache()
+	}
+
 	cacheList, err := c.Cache()
 	if err != nil {
 		return nil, nil, err
