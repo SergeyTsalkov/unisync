@@ -20,7 +20,7 @@ type SSHClient struct {
 func New(username, host string) *SSHClient {
 	c := &SSHClient{}
 
-	cmd := strings.Split(fmt.Sprintf("-e none -o BatchMode=yes %v@%v unisync -stdserver", username, host), " ")
+	cmd := strings.Split(fmt.Sprintf("-e none -o BatchMode=yes -o ConnectTimeout=30 -o StrictHostKeyChecking=no %v@%v unisync -stdserver", username, host), " ")
 	c.cmd = exec.Command("ssh", cmd...)
 	var err error
 
