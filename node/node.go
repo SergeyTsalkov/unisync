@@ -24,6 +24,7 @@ type Node struct {
 	basepath  string
 	Progress  chan progresswriter.Progress
 	writeLock *sync.Mutex
+	tmpdir    string
 
 	// most incoming packets go into MainC
 	MainC chan *Packet
@@ -53,22 +54,46 @@ func New(in io.Reader, out io.Writer) *Node {
 	return node
 }
 
+func (n *Node) SetTmpdir(tmpdir string) error {
+	if n.tmpdir != "" {
+		return fmt.Errorf("tmpdir is already set")
+	}
+	if tmpdir == "" {
+		if ostmpdir := os.TempDir(); ostmpdir == "" || !config.IsDir(ostmpdir) {
+			return fmt.Errorf("$TMPDIR (%v) doesn't exist", ostmpdir)
+		}
+
+		return nil
+	}
+
+	var err error
+	tmpdir, err = config.ResolvePath(tmpdir)
+	if err != nil {
+		return err
+	}
+	if !config.IsDir(tmpdir) {
+		return fmt.Errorf("%v is not a directory", tmpdir)
+	}
+
+	n.tmpdir = tmpdir
+	return nil
+}
+func (n *Node) GetTmpdir() string {
+	return n.tmpdir
+}
+
 func (n *Node) SetBasepath(basepath string) error {
 	if n.basepath != "" {
 		return fmt.Errorf("basepath is already set")
 	}
 
 	var err error
-	basepath, err = filepath.Abs(basepath)
+	basepath, err = config.ResolvePath(basepath)
 	if err != nil {
 		return err
 	}
 
-	info, err := os.Lstat(basepath)
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() {
+	if !config.IsDir(basepath) {
 		return fmt.Errorf("%v is not a directory", basepath)
 	}
 

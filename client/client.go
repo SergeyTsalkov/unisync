@@ -28,6 +28,11 @@ func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
 		return nil, fmt.Errorf("Unable to set basepath: %w", err)
 	}
 
+	err = client.SetTmpdir(config.Tmpdir)
+	if err != nil {
+		return nil, fmt.Errorf("Unable to set tmpdir: %w", err)
+	}
+
 	return client, nil
 }
 

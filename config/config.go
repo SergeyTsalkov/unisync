@@ -13,15 +13,21 @@ import (
 	"unisync/log"
 )
 
+var once sync.Once
+var configDir string
+
 type Config struct {
-	Name     string   `json:"name"`
-	Local    string   `json:"local"`
-	Remote   string   `json:"remote"`
-	Username string   `json:"username"`
-	Host     string   `json:"host"`
-	Method   string   `json:"method"`
-	Prefer   string   `json:"prefer"'`
-	Ignore   []string `json:"ignore"`
+	Name         string `json:"name"`
+	Local        string `json:"local"`
+	Remote       string `json:"remote"`
+	Username     string `json:"username"`
+	Host         string `json:"host"`
+	Method       string `json:"method"`
+	Prefer       string `json:"prefer"'`
+	Tmpdir       string `json:"tmpdir"`
+	RemoteTmpdir string `json:"remote_tmpdir"`
+
+	Ignore []string `json:"ignore"`
 
 	ChmodLocal     FileMode `json:"chmod_local"`
 	ChmodLocalDir  FileMode `json:"chmod_local_dir"`
@@ -60,9 +66,6 @@ func (f *FileMode) UnmarshalINI(b []byte) error {
 	f.FileMode = fs.FileMode(i)
 	return nil
 }
-
-var once sync.Once
-var configDir string
 
 func Parse(path string) (*Config, error) {
 	if !filepath.IsAbs(path) {
@@ -107,14 +110,14 @@ func Parse(path string) (*Config, error) {
 	return config, nil
 }
 
-func (C *Config) Validate() error {
-	if C.Local == "" {
+func (c *Config) Validate() error {
+	if c.Local == "" {
 		return fmt.Errorf("config setting local is required (and missing)")
 	}
-	if C.Remote == "" {
+	if c.Remote == "" {
 		return fmt.Errorf("config setting remote is required (and missing)")
 	}
-	if C.Prefer != "newest" && C.Prefer != "oldest" && C.Prefer != "local" && C.Prefer != "remote" {
+	if c.Prefer != "newest" && c.Prefer != "oldest" && c.Prefer != "local" && c.Prefer != "remote" {
 		return fmt.Errorf("config.prefer must be one of: newest, oldest, local, remote")
 	}
 
@@ -123,23 +126,44 @@ func (C *Config) Validate() error {
 
 func ConfigDir() string {
 	once.Do(func() {
-		home, err := os.UserHomeDir()
-		if err != nil || home == "" {
-			log.Fatalln("Unable to determine ConfigDir! Is your $HOME set?")
+		var err error
+
+		configDir, err = ResolvePath("~/.unisync")
+		if err != nil {
+			log.Fatalf("ConfigDir error: %v", err)
 		}
 
-		configDir = filepath.Join(home, ".unisync")
-
-		if !dirExists(configDir) {
-			err := os.Mkdir(configDir, 0700)
-			if err != nil || !dirExists(configDir) {
-				log.Fatalf("Unable to create ConfigDir %v: %v", configDir, err)
-			}
+		err = mkdirIfMissing(configDir, 0700)
+		if err != nil {
+			log.Fatalf("Unable to create ConfigDir %v: %v", configDir, err)
 		}
-
 	})
 
 	return configDir
+}
+
+func ResolvePath(oldpath string) (string, error) {
+	newpath := oldpath
+
+	if strings.HasPrefix(newpath, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("Unable to resolve %v: %w", oldpath, err)
+		}
+		if home == "" {
+			return "", fmt.Errorf("Unable to resolve %v: your $HOME is not set", oldpath)
+		}
+
+		newpath = strings.Replace(newpath, "~", home, 1)
+	}
+
+	var err error
+	newpath, err = filepath.Abs(newpath)
+	if err != nil {
+		return "", fmt.Errorf("Unable to resolve %v: %w", oldpath, err)
+	}
+
+	return newpath, nil
 }
 
 func fileExists(file string) bool {
@@ -151,11 +175,14 @@ func fileExists(file string) bool {
 	return info.Mode().IsRegular()
 }
 
-func dirExists(dir string) bool {
+func IsDir(dir string) bool {
 	info, err := os.Stat(dir)
-	if err != nil {
-		return false
-	}
+	return err == nil && info.IsDir()
+}
 
-	return info.IsDir()
+func mkdirIfMissing(dir string, mode os.FileMode) error {
+	if IsDir(dir) {
+		return nil
+	}
+	return os.Mkdir(dir, mode)
 }

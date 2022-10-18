@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 	"unisync/commands"
@@ -84,10 +83,7 @@ func (n *Node) openReceiveFile(fullpath string, receivedPerm fs.FileMode, size i
 		perm = n.FileMask(perm, receivedPerm)
 	}
 
-	dir, _ := filepath.Split(fullpath)
-	tempfullpath := filepath.Join(dir, ".unisync-tmp")
-
-	file, err := os.Create(tempfullpath)
+	file, err := os.CreateTemp(n.GetTmpdir(), "tmp-unisync-*.tmp")
 	if err != nil {
 		return nil, "", err
 	}
@@ -96,5 +92,5 @@ func (n *Node) openReceiveFile(fullpath string, receivedPerm fs.FileMode, size i
 	if err != nil {
 		return nil, "", err
 	}
-	return progresswriter.New(file, size, n.Progress), tempfullpath, nil
+	return progresswriter.New(file, size, n.Progress), file.Name(), nil
 }
