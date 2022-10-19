@@ -1,8 +1,10 @@
 package client
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -20,7 +22,13 @@ type StoredCache struct {
 }
 
 func (c *Client) cacheFullpath() string {
-	return filepath.Join(config.ConfigDir(), c.Config.Name+".cache")
+	name := c.Config.Name
+	if name == "" {
+		str := fmt.Sprintf("%v:%v:%v", c.GetBasepath(), c.remoteBasepath, c.Config.Host)
+		name = fmt.Sprintf("%x", md5.Sum([]byte(str)))
+	}
+
+	return filepath.Join(config.ConfigDir(), name+".cache")
 }
 
 func (c *Client) Cache() (filelist.FileList, error) {

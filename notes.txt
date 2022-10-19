@@ -17,8 +17,16 @@ example:
   unisync myhost.json
   unisync -start myhost.json (run in background)
   unisync -stop myhost.json (stop running in background)
+  unisync -log myhost.json (show+tail log)
   unisync -stopall
   unisync -status (list jobs running in background)
+
+
+NEW SETTINGS
+remote_binary_path = unisync | ./unisync [only valid for ssh/nativessh]
+ssh_path = ssh [only valid for ssh]
+ssh_opts = -e none -o BatchMode=yes -o ConnectTimeout=30 -o StrictHostKeyChecking=no [only valid for ssh]
+
 
 
 TODO:
@@ -33,9 +41,9 @@ TODO:
     - direct / directtls methods
     - use keepalive on every connection method
     
-  - parse all command line options, including working without config file (will have to choose cache name)
-  - test on Windows
-  
+  - test on Windows, OpenBSD, etc
+  - client looks for unisync binary in HOMEDIR if it's missing in PATH (implement as remote_binary_path=, which takes multiple options and they'll all be checked)
+  - use start/stop/stopall/status/log to manage background workers
 
   
 
