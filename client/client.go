@@ -92,6 +92,7 @@ func (c *Client) RunHello() error {
 
 	whatsup := cmd.(*commands.Whatsup)
 	c.remoteBasepath = whatsup.Basepath
+	log.Printf("Syncing: %v <-> %v@%v:%v", c.GetBasepath(), c.Config.Username, c.Config.Host, c.remoteBasepath)
 	return nil
 }
 

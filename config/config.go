@@ -67,6 +67,21 @@ func (f *FileMode) UnmarshalINI(b []byte) error {
 	return nil
 }
 
+func New() *Config {
+	config := Config{
+		Method:         "ssh",
+		Prefer:         "newest",
+		ChmodLocal:     FileMode{0644},
+		ChmodRemote:    FileMode{0644},
+		ChmodLocalDir:  FileMode{0755},
+		ChmodRemoteDir: FileMode{0755},
+		ChmodMask:      FileMode{0100},
+		ChmodDirMask:   FileMode{0},
+	}
+
+	return &config
+}
+
 func Parse(path string) (*Config, error) {
 	if !filepath.IsAbs(path) {
 		path = filepath.Join(ConfigDir(), path)
@@ -87,16 +102,7 @@ func Parse(path string) (*Config, error) {
 		return nil, fmt.Errorf("Unable to read ConfigFile %v: %v", path, err)
 	}
 
-	config := &Config{
-		Method:         "ssh",
-		Prefer:         "newest",
-		ChmodLocal:     FileMode{0644},
-		ChmodRemote:    FileMode{0644},
-		ChmodLocalDir:  FileMode{0755},
-		ChmodRemoteDir: FileMode{0755},
-		ChmodMask:      FileMode{0100},
-		ChmodDirMask:   FileMode{0},
-	}
+	config := New()
 	err = ini.Unmarshal(bytes, config)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse ConfigFile %v: %v", path, err)
