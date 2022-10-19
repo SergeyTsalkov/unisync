@@ -22,13 +22,6 @@ example:
   unisync -status (list jobs running in background)
 
 
-NEW SETTINGS
-remote_binary_path = unisync | ./unisync [only valid for ssh/nativessh]
-ssh_path = ssh [only valid for ssh]
-ssh_opts = -e none -o BatchMode=yes -o ConnectTimeout=30 -o StrictHostKeyChecking=no [only valid for ssh]
-
-
-
 TODO:
   - error handling
     - dump server connection on error, auto reconect and retry
@@ -42,7 +35,6 @@ TODO:
     - use keepalive on every connection method
     
   - test on Windows, OpenBSD, etc
-  - client looks for unisync binary in HOMEDIR if it's missing in PATH (implement as remote_binary_path=, which takes multiple options and they'll all be checked)
   - use start/stop/stopall/status/log to manage background workers
 
   

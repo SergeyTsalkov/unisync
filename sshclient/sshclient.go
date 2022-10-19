@@ -13,37 +13,63 @@ type SSHClient struct {
 	In  io.Writer
 	Out io.Reader
 
-	cmd    *exec.Cmd
-	stderr io.Reader
+	sshcmd  []string
+	execCmd *exec.Cmd
+	stderr  io.Reader
 }
 
-func New(username, host string) *SSHClient {
+func (c *SSHClient) cmd(format string, a ...any) *exec.Cmd {
+	len := len(c.sshcmd)
+	out := make([]string, len+1)
+	copy(out, c.sshcmd)
+	out[len] = fmt.Sprintf(format, a...)
+	return exec.Command(out[0], out[1:]...)
+}
+
+func New(username, host, ssh_path, ssh_opts string) *SSHClient {
 	c := &SSHClient{}
-
-	cmd := strings.Split(fmt.Sprintf("-e none -o BatchMode=yes -o ConnectTimeout=30 -o StrictHostKeyChecking=no %v@%v unisync -stdserver", username, host), " ")
-	c.cmd = exec.Command("ssh", cmd...)
-	var err error
-
-	c.In, err = c.cmd.StdinPipe()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	c.Out, err = c.cmd.StdoutPipe()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	c.stderr, err = c.cmd.StderrPipe()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
+	sshcmd := fmt.Sprintf("%v %v %v@%v", ssh_path, ssh_opts, username, host)
+	c.sshcmd = strings.Split(sshcmd, " ")
 	return c
 }
 
-func (c *SSHClient) Run() error {
-	err := c.cmd.Start()
+func (c *SSHClient) Search(locations []string) (string, error) {
+	var err error
+	var output []byte
+
+	for _, location := range locations {
+		execCmd := c.cmd("command -v %v", location)
+		output, err = execCmd.CombinedOutput()
+		if err != nil {
+			if exitError, ok := err.(*exec.ExitError); ok {
+				if exitError.ExitCode() == 1 {
+					continue
+				}
+			}
+			return "", &ssherror{err, output}
+		}
+
+		return location, nil
+	}
+
+	return "", fmt.Errorf("Unable to find unisync binary: %v", &ssherror{err, output})
+}
+
+func (c *SSHClient) Run(location string) error {
+	c.execCmd = c.cmd("%v -stdserver", location)
+
+	var err error
+	if c.In, err = c.execCmd.StdinPipe(); err != nil {
+		panic(err)
+	}
+	if c.Out, err = c.execCmd.StdoutPipe(); err != nil {
+		panic(err)
+	}
+	if c.stderr, err = c.execCmd.StderrPipe(); err != nil {
+		panic(err)
+	}
+
+	err = c.execCmd.Start()
 	if err != nil {
 		return err
 	}
@@ -67,7 +93,7 @@ func (c *SSHClient) Wait() {
 		}
 	}
 
-	err := c.cmd.Wait()
+	err := c.execCmd.Wait()
 	if err != nil {
 		log.Fatalln("ssh exited:", err)
 	} else {

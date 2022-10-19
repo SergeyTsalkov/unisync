@@ -17,17 +17,20 @@ var once sync.Once
 var configDir string
 
 type Config struct {
-	Name         string `json:"name"`
-	Local        string `json:"local"`
-	Remote       string `json:"remote"`
-	Username     string `json:"username"`
-	Host         string `json:"host"`
-	Method       string `json:"method"`
-	Prefer       string `json:"prefer"'`
-	Tmpdir       string `json:"tmpdir"`
-	RemoteTmpdir string `json:"remote_tmpdir"`
+	Name         string   `json:"name"`
+	Local        string   `json:"local"`
+	Remote       string   `json:"remote"`
+	Username     string   `json:"username"`
+	Host         string   `json:"host"`
+	Method       string   `json:"method"`
+	Prefer       string   `json:"prefer"'`
+	Ignore       []string `json:"ignore"`
+	Tmpdir       string   `json:"tmpdir"`
+	RemoteTmpdir string   `json:"remote_tmpdir"`
+	SshPath      string   `json:"ssh_path"`
+	SshOpts      string   `json:"ssh_opts"`
 
-	Ignore []string `json:"ignore"`
+	RemoteUnisyncPath []string `json:"remote_unisync_path"`
 
 	ChmodLocal     FileMode `json:"chmod_local"`
 	ChmodLocalDir  FileMode `json:"chmod_local_dir"`
@@ -69,6 +72,8 @@ func (f *FileMode) UnmarshalINI(b []byte) error {
 
 func New() *Config {
 	config := Config{
+		SshPath:        "ssh",
+		SshOpts:        "-e none -o BatchMode=yes -o ConnectTimeout=30 -o StrictHostKeyChecking=no",
 		Method:         "ssh",
 		Prefer:         "newest",
 		ChmodLocal:     FileMode{0644},
@@ -125,6 +130,14 @@ func (c *Config) Validate() error {
 	}
 	if c.Prefer != "newest" && c.Prefer != "oldest" && c.Prefer != "local" && c.Prefer != "remote" {
 		return fmt.Errorf("config.prefer must be one of: newest, oldest, local, remote")
+	}
+
+	if !strings.Contains(c.SshOpts, "-e none") {
+		return fmt.Errorf(`config.ssh_opts must contain "-e none"`)
+	}
+
+	if len(c.RemoteUnisyncPath) == 0 {
+		c.RemoteUnisyncPath = []string{"unisync", "./unisync"}
 	}
 
 	return nil

@@ -68,10 +68,20 @@ func runServer() {
 
 func runClient(conf *config.Config) {
 	log.Printf("Connecting to %v@%v", conf.Username, conf.Host)
-	sshc := sshclient.New(conf.Username, conf.Host)
-	err := sshc.Run()
+	sshc := sshclient.New(conf.Username, conf.Host, conf.SshPath, conf.SshOpts)
+
+	location := conf.RemoteUnisyncPath[0]
+	if len(conf.RemoteUnisyncPath) > 1 {
+		var err error
+		location, err = sshc.Search(conf.RemoteUnisyncPath)
+		if err != nil {
+			log.Fatalln("ssh error:", err)
+		}
+	}
+
+	err := sshc.Run(location)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("ssh error:", err)
 	}
 
 	c, err := client.New(sshc.Out, sshc.In, conf)
