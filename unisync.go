@@ -8,8 +8,10 @@ import (
 	"unisync/client"
 	"unisync/config"
 	"unisync/log"
+	"unisync/myssh"
+	"unisync/myssh/externalssh"
+	"unisync/myssh/internalssh"
 	"unisync/server"
-	"unisync/sshclient"
 )
 
 func main() {
@@ -24,7 +26,7 @@ func main() {
 		var err error
 		conf, err = config.Parse(args[0])
 		if err != nil {
-			log.Fatalf("Failed parsing config file %v: %v", args[0], err)
+			log.Fatalln(err)
 		}
 	} else if len(args) == 2 {
 		userhost, remotepath, valid := strings.Cut(args[1], ":")
@@ -45,54 +47,62 @@ func main() {
 	}
 
 	if *stdServerFlag {
-		runServer()
+		err := runServer()
+		if err != nil {
+			log.Fatalln(err)
+		}
+
 	} else {
 		if conf == nil {
 			showHelp()
 		}
 
-		runClient(conf)
+		log.Printf("Connecting to %v@%v (%v)", conf.Username, conf.Host, conf.Method)
+		var sshclient myssh.SshClient
+		if conf.Method == "ssh" {
+			sshclient = externalssh.New(conf)
+		} else if conf.Method == "internalssh" {
+			var err error
+			sshclient, err = internalssh.New(conf)
+			if err != nil {
+				log.Fatalln("ssh error:", err)
+			}
+		}
+
+		err := runClient(sshclient, conf)
+		if err != nil {
+			log.Fatalln(err)
+		}
 	}
 }
 
-func runServer() {
+func runServer() error {
 	log.Reset()
 	log.Add(os.Stderr, log.Warn, "")
 
 	s := server.New(os.Stdin, os.Stdout)
-	err := s.Run()
-	if err != nil {
-		log.Fatalln(err)
-	}
+	return s.Run()
 }
 
-func runClient(conf *config.Config) {
-	log.Printf("Connecting to %v@%v", conf.Username, conf.Host)
-	sshc := sshclient.New(conf.Username, conf.Host, conf.SshPath, conf.SshOpts)
-
+func runClient(sshclient myssh.SshClient, conf *config.Config) error {
 	location := conf.RemoteUnisyncPath[0]
 	if len(conf.RemoteUnisyncPath) > 1 {
 		var err error
-		location, err = sshc.Search(conf.RemoteUnisyncPath)
+		location, err = sshclient.Search(conf.RemoteUnisyncPath)
 		if err != nil {
-			log.Fatalln("ssh error:", err)
+			return fmt.Errorf("ssh error: %v", err)
 		}
 	}
 
-	err := sshc.Run(location)
+	stdin, stdout, err := sshclient.Run(location)
 	if err != nil {
-		log.Fatalln("ssh error:", err)
+		return fmt.Errorf("ssh error: %v", err)
 	}
-
-	c, err := client.New(sshc.Out, sshc.In, conf)
+	c, err := client.New(stdout, stdin, conf)
 	if err != nil {
-		log.Fatalln(err)
+		return err
 	}
-
-	err = c.Run()
-	if err != nil {
-		log.Fatalln(err)
-	}
+	return c.Run()
 }
 
 func showHelp() {

@@ -29,6 +29,7 @@ type Config struct {
 	RemoteTmpdir string   `json:"remote_tmpdir"`
 	SshPath      string   `json:"ssh_path"`
 	SshOpts      string   `json:"ssh_opts"`
+	SshKey       string   `json:"ssh_key"`
 
 	RemoteUnisyncPath []string `json:"remote_unisync_path"`
 
@@ -92,48 +93,55 @@ func Parse(path string) (*Config, error) {
 		path = filepath.Join(ConfigDir(), path)
 	}
 
-	if !fileExists(path) {
+	if !IsFile(path) {
 		if !strings.HasSuffix(path, ".conf") {
 			path = path + ".conf"
 		}
 
-		if !fileExists(path) {
+		if !IsFile(path) {
 			return nil, fmt.Errorf("ConfigFile %v does not exist", path)
 		}
 	}
+	_, name := filepath.Split(path)
 
 	bytes, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to read ConfigFile %v: %v", path, err)
+		return nil, fmt.Errorf("Unable to read ConfigFile %v: %v", name, err)
 	}
 
 	config := New()
 	err = ini.Unmarshal(bytes, config)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to parse ConfigFile %v: %v", path, err)
+		return nil, fmt.Errorf("Unable to parse ConfigFile %v: %v", name, err)
 	}
 
-	_, config.Name = filepath.Split(path)
 	err = config.Validate()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Problem in ConfigFile %v: %v", name, err)
 	}
+
+	config.Name = name
 	return config, nil
 }
 
 func (c *Config) Validate() error {
 	if c.Local == "" {
-		return fmt.Errorf("config setting local is required (and missing)")
+		return fmt.Errorf("setting local is required (and missing)")
 	}
 	if c.Remote == "" {
-		return fmt.Errorf("config setting remote is required (and missing)")
+		return fmt.Errorf("setting remote is required (and missing)")
 	}
-	if c.Prefer != "newest" && c.Prefer != "oldest" && c.Prefer != "local" && c.Prefer != "remote" {
-		return fmt.Errorf("config.prefer must be one of: newest, oldest, local, remote")
+	if err := validateInArray("prefer", c.Prefer, []string{"newest", "oldest", "local", "remote"}); err != nil {
+		return err
 	}
-
+	if err := validateInArray("method", c.Method, []string{"ssh", "internalssh"}); err != nil {
+		return err
+	}
 	if !strings.Contains(c.SshOpts, "-e none") {
-		return fmt.Errorf(`config.ssh_opts must contain "-e none"`)
+		return fmt.Errorf(`setting ssh_opts must contain "-e none"`)
+	}
+	if c.Method == "internalssh" && c.SshKey == "" {
+		return fmt.Errorf("if you use method=internalssh, ssh_key= must also be set")
 	}
 
 	if len(c.RemoteUnisyncPath) == 0 {
@@ -185,7 +193,17 @@ func ResolvePath(oldpath string) (string, error) {
 	return newpath, nil
 }
 
-func fileExists(file string) bool {
+func validateInArray(name, value string, options []string) error {
+	for _, option := range options {
+		if value == option {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("setting %v must be one of: %v", name, strings.Join(options, ", "))
+}
+
+func IsFile(file string) bool {
 	info, err := os.Stat(file)
 	if err != nil {
 		return false
