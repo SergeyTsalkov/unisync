@@ -41,7 +41,8 @@ func New(conf *config.Config) (*internalSshClient, error) {
 	}
 
 	c := &internalSshClient{}
-	c.ssh, err = dial(conf.Host+":22", config, conf.Timeout)
+	addr := fmt.Sprintf("%v:%v", conf.Host, conf.Port)
+	c.ssh, err = dial(addr, config, conf.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect: %w", err)
 	}

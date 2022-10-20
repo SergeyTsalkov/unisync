@@ -27,6 +27,9 @@ func (c *externalSshClient) cmd(format string, a ...any) *exec.Cmd {
 func New(conf *config.Config) *externalSshClient {
 	c := &externalSshClient{}
 
+	if conf.Port != 22 {
+		conf.SshOpts += " " + fmt.Sprintf("-p %v", conf.Port)
+	}
 	if conf.ConnectTimeout > 0 {
 		conf.SshOpts += " " + fmt.Sprintf("-o ConnectTimeout=%v", conf.ConnectTimeout)
 	}

@@ -22,6 +22,7 @@ type Config struct {
 	Remote         string   `json:"remote"`
 	Username       string   `json:"username"`
 	Host           string   `json:"host"`
+	Port           int      `json:"port"`
 	Method         string   `json:"method"`
 	Prefer         string   `json:"prefer"'`
 	Ignore         []string `json:"ignore"`
@@ -81,6 +82,7 @@ func New() *Config {
 		Prefer:         "newest",
 		Timeout:        300,
 		ConnectTimeout: 30,
+		Port:           22,
 		ChmodLocal:     FileMode{0644},
 		ChmodRemote:    FileMode{0644},
 		ChmodLocalDir:  FileMode{0755},
