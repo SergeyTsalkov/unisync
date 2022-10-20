@@ -6,7 +6,6 @@ import (
 	"unisync/commands"
 	"unisync/filelist"
 	"unisync/log"
-	"unisync/overwriter"
 	"unisync/progressbar"
 )
 
@@ -201,7 +200,7 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 
 func (c *Client) startProgressBar() func() {
 	loglevel, ok := log.GetLevel(os.Stdout)
-	if !ok || loglevel > log.Notice || !overwriter.IsTerminal() {
+	if !ok || loglevel > log.Notice || !progressbar.CanUse() {
 		return func() {}
 	}
 

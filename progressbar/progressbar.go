@@ -5,8 +5,12 @@ import (
 	"math"
 	"strings"
 	"time"
-	"unisync/overwriter"
+	"unisync/progressbar/overwriter"
 )
+
+func CanUse() bool {
+	return overwriter.IsTerminal()
+}
 
 // 57% [=========>-----------] ETA: 4m33s
 func Draw(progress int, eta int) error {

@@ -30,7 +30,6 @@ TODO:
     - n.Errors channel should be monitored during all phases, including initial sync on client
 
   - connection methods
-    - nativessh method
     - direct / directtls methods
     - use keepalive on every connection method
     
