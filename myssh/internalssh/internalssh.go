@@ -36,8 +36,7 @@ func New(conf *config.Config) (*internalSshClient, error) {
 			ssh.PublicKeys(signer),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-
-		Timeout: time.Duration(conf.ConnectTimeout) * time.Second,
+		Timeout:         time.Duration(conf.ConnectTimeout) * time.Second,
 	}
 
 	c := &internalSshClient{}
@@ -53,8 +52,8 @@ func New(conf *config.Config) (*internalSshClient, error) {
 // replacement for ssh.Dial() to give us control over KeepAlive
 func dial(addr string, config *ssh.ClientConfig, timeout int) (*ssh.Client, error) {
 	dialer := net.Dialer{
-		Timeout:   config.Timeout,
-		KeepAlive: time.Duration(timeout) * time.Second,
+		Timeout:   config.Timeout,                       // config setting connect_timeout
+		KeepAlive: time.Duration(timeout) * time.Second, // config setting timeout
 	}
 	conn, err := dialer.Dial("tcp", addr)
 	if err != nil {

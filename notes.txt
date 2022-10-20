@@ -36,10 +36,6 @@ TODO:
   - test on Windows, OpenBSD, etc
   - use start/stop/stopall/status/log to manage background workers
 
-  - add port= field for all connection methods
-
-
-       
 
 
 
