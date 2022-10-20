@@ -21,7 +21,7 @@ type Output struct {
 	Timestamp string
 }
 
-var Outputs = []*Output{}
+var Outputs = []*Output{&Output{os.Stdout, Notice, ""}}
 
 func writeTo(w io.Writer, ts, str string) error {
 	var err error

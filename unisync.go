@@ -15,8 +15,6 @@ import (
 )
 
 func main() {
-	log.Add(os.Stdout, log.Notice, "")
-
 	stdServerFlag := flag.Bool("stdserver", false, "run server that uses stdin/stdout (internal use only)")
 	flag.Parse()
 	args := flag.Args()
