@@ -27,8 +27,15 @@ func (c *externalSshClient) cmd(format string, a ...any) *exec.Cmd {
 func New(conf *config.Config) *externalSshClient {
 	c := &externalSshClient{}
 
+	if conf.ConnectTimeout > 0 {
+		conf.SshOpts += " " + fmt.Sprintf("-o ConnectTimeout=%v", conf.ConnectTimeout)
+	}
+	if conf.Timeout > 0 && conf.Timeout != 300 {
+		// when BatchMode is on, the default ServerAliveInterval is already 300
+		conf.SshOpts += " " + fmt.Sprintf("-o ServerAliveInterval=%v", conf.Timeout)
+	}
 	if conf.SshKey != "" {
-		conf.SshOpts += fmt.Sprintf(" -o IdentityFile=%v", conf.SshKey)
+		conf.SshOpts += " " + fmt.Sprintf("-o IdentityFile=%v", conf.SshKey)
 	}
 
 	sshcmd := fmt.Sprintf("%v %v %v@%v", conf.SshPath, conf.SshOpts, conf.Username, conf.Host)

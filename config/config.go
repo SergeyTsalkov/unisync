@@ -17,19 +17,21 @@ var once sync.Once
 var configDir string
 
 type Config struct {
-	Name         string   `json:"name"`
-	Local        string   `json:"local"`
-	Remote       string   `json:"remote"`
-	Username     string   `json:"username"`
-	Host         string   `json:"host"`
-	Method       string   `json:"method"`
-	Prefer       string   `json:"prefer"'`
-	Ignore       []string `json:"ignore"`
-	Tmpdir       string   `json:"tmpdir"`
-	RemoteTmpdir string   `json:"remote_tmpdir"`
-	SshPath      string   `json:"ssh_path"`
-	SshOpts      string   `json:"ssh_opts"`
-	SshKey       string   `json:"ssh_key"`
+	Name           string   `json:"name"`
+	Local          string   `json:"local"`
+	Remote         string   `json:"remote"`
+	Username       string   `json:"username"`
+	Host           string   `json:"host"`
+	Method         string   `json:"method"`
+	Prefer         string   `json:"prefer"'`
+	Ignore         []string `json:"ignore"`
+	Tmpdir         string   `json:"tmpdir"`
+	RemoteTmpdir   string   `json:"remote_tmpdir"`
+	SshPath        string   `json:"ssh_path"`
+	SshOpts        string   `json:"ssh_opts"`
+	SshKey         string   `json:"ssh_key"`
+	Timeout        int      `json:"timeout"`
+	ConnectTimeout int      `json:"connect_timeout"`
 
 	RemoteUnisyncPath []string `json:"remote_unisync_path"`
 
@@ -74,9 +76,11 @@ func (f *FileMode) UnmarshalINI(b []byte) error {
 func New() *Config {
 	config := Config{
 		SshPath:        "ssh",
-		SshOpts:        "-e none -o BatchMode=yes -o ConnectTimeout=30 -o StrictHostKeyChecking=no",
+		SshOpts:        "-e none -o BatchMode=yes -o StrictHostKeyChecking=no",
 		Method:         "ssh",
 		Prefer:         "newest",
+		Timeout:        300,
+		ConnectTimeout: 30,
 		ChmodLocal:     FileMode{0644},
 		ChmodRemote:    FileMode{0644},
 		ChmodLocalDir:  FileMode{0755},

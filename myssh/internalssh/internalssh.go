@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -36,16 +37,33 @@ func New(conf *config.Config) (*internalSshClient, error) {
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 
-		Timeout: 30 * time.Second,
+		Timeout: time.Duration(conf.ConnectTimeout) * time.Second,
 	}
 
 	c := &internalSshClient{}
-	c.ssh, err = ssh.Dial("tcp", conf.Host+":22", config)
+	c.ssh, err = dial(conf.Host+":22", config, conf.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect: %w", err)
 	}
 
 	return c, nil
+}
+
+// replacement for ssh.Dial() to give us control over KeepAlive
+func dial(addr string, config *ssh.ClientConfig, timeout int) (*ssh.Client, error) {
+	dialer := net.Dialer{
+		Timeout:   config.Timeout,
+		KeepAlive: time.Duration(timeout) * time.Second,
+	}
+	conn, err := dialer.Dial("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	if err != nil {
+		return nil, err
+	}
+	return ssh.NewClient(c, chans, reqs), nil
 }
 
 func (c *internalSshClient) Search(locations []string) (string, error) {
