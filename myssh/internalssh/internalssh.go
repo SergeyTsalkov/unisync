@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 	"unisync/config"
 	"unisync/log"
 	"unisync/myssh"
@@ -34,6 +35,8 @@ func New(conf *config.Config) (*internalSshClient, error) {
 			ssh.PublicKeys(signer),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+
+		Timeout: 30 * time.Second,
 	}
 
 	c := &internalSshClient{}
