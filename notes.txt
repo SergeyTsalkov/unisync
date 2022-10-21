@@ -12,6 +12,11 @@ rsync --archive --delete --exclude='.git' --exclude='unisync' /Users/sergey/unis
   cache: filename (default: [name].cache)
 }
 
+mtls := minitls.New()
+mtls.Save("path/to/save") // save json of private key and CA cert
+minitls.Load("path/to/save")
+minitls.BuildAndSign() // returns signed cert, usable for client or server
+
 example:
   unisync ~/localpath user@host:remotepath/
   unisync myhost.json
