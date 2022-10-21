@@ -20,6 +20,7 @@ func (n *Node) ReceiveFile(push *commands.Push, waiter *sync.WaitGroup) error {
 	if err != nil {
 		return err
 	}
+	defer os.Remove(tempfullpath)
 
 	for {
 		if push.BodyLen() > 0 {

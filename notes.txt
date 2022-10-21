@@ -30,7 +30,6 @@ example:
 TODO:
   - error handling
     - dump server connection on error, auto reconect and retry
-    - client should delete any .unisync-tmp files on abrupt exit, including if user hits Ctrl+C
     
   - test on Windows, OpenBSD, etc
   - use start/stop/stopall/status/log to manage background workers
