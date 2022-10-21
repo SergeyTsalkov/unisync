@@ -140,7 +140,7 @@ func (c *Config) Validate() error {
 	if err := validateInArray("prefer", c.Prefer, []string{"newest", "oldest", "local", "remote"}); err != nil {
 		return err
 	}
-	if err := validateInArray("method", c.Method, []string{"ssh", "internalssh"}); err != nil {
+	if err := validateInArray("method", c.Method, []string{"ssh", "internalssh", "directtls"}); err != nil {
 		return err
 	}
 	if !strings.Contains(c.SshOpts, "-e none") {

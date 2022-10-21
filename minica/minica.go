@@ -1,4 +1,4 @@
-package minitls
+package minica
 
 import (
 	"bytes"
@@ -9,42 +9,32 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"time"
 )
 
-type MiniTLS struct {
-	PrivateKey string // PEM
+type MiniCA struct {
 	privateKey *rsa.PrivateKey
-
-	CaCert string // PEM
-	caCert *x509.Certificate
+	caCert     *x509.Certificate
 }
 
-func (m *MiniTLS) makePrivateKey() error {
+func (m *MiniCA) makePrivateKey() error {
 	var err error
 	m.privateKey, err = rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return err
 	}
 
-	encodedKey := &bytes.Buffer{}
-	err = pem.Encode(encodedKey, &pem.Block{
-		Type:  "RSA PRIVATE KEY",
-		Bytes: x509.MarshalPKCS1PrivateKey(m.privateKey),
-	})
-	if err != nil {
-		return err
-	}
-
-	m.PrivateKey = string(encodedKey.Bytes())
 	return nil
 }
 
-func (m *MiniTLS) makeCA() error {
+func (m *MiniCA) makeCA() error {
 	if m.privateKey == nil {
 		return fmt.Errorf("Can't make CA: privateKey is not set")
 	}
 
 	ca := &x509.Certificate{
+		NotBefore:             time.Now().AddDate(-10, 0, 0),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
 		SerialNumber:          big.NewInt(2019),
 		IsCA:                  true,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
@@ -57,16 +47,6 @@ func (m *MiniTLS) makeCA() error {
 		return err
 	}
 
-	encodedCA := &bytes.Buffer{}
-	err = pem.Encode(encodedCA, &pem.Block{
-		Type:  "CERTIFICATE",
-		Bytes: caBytes,
-	})
-	if err != nil {
-		return err
-	}
-
-	m.CaCert = string(encodedCA.Bytes())
 	m.caCert, err = x509.ParseCertificate(caBytes)
 	if err != nil {
 		return err
@@ -75,8 +55,17 @@ func (m *MiniTLS) makeCA() error {
 	return nil
 }
 
-func (m *MiniTLS) MakeCert() (*tls.Certificate, error) {
+func (m *MiniCA) GetCAPool() *x509.CertPool {
+	pool := x509.NewCertPool()
+	pool.AddCert(m.caCert)
+	return pool
+}
+
+func (m *MiniCA) MakeCert() ([]tls.Certificate, error) {
 	cert := &x509.Certificate{
+		NotBefore:    time.Now().AddDate(-10, 0, 0),
+		NotAfter:     time.Now().AddDate(10, 0, 0),
+		DNSNames:     []string{"unisync"},
 		SerialNumber: big.NewInt(2019),
 		SubjectKeyId: []byte{1, 2, 3, 4, 6},
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
@@ -115,20 +104,21 @@ func (m *MiniTLS) MakeCert() (*tls.Certificate, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &serverCert, nil
+	return []tls.Certificate{serverCert}, nil
 }
 
-func New() (*MiniTLS, error) {
-	mtls := &MiniTLS{}
-	err := mtls.makePrivateKey()
-	if err != nil {
+func New(fullpath string) (*MiniCA, error) {
+	mca := &MiniCA{}
+
+	if err := mca.makePrivateKey(); err != nil {
+		return nil, err
+	}
+	if err := mca.makeCA(); err != nil {
+		return nil, err
+	}
+	if err := mca.save(fullpath); err != nil {
 		return nil, err
 	}
 
-	err = mtls.makeCA()
-	if err != nil {
-		return nil, err
-	}
-
-	return mtls, err
+	return mca, nil
 }
