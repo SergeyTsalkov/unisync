@@ -20,9 +20,16 @@ func New(in io.Reader, out io.Writer) *Server {
 func (s *Server) Run() error {
 	go s.monitorProgress()
 
+	// this is safe because this main thread is the only one that pushes to s.Progress (via receive.go)
+	defer close(s.Progress)
+
 	for {
 		select {
-		case packet := <-s.MainC:
+		case packet, ok := <-s.MainC:
+			if !ok {
+				return s.InputErr
+			}
+
 			err := s.handle(packet)
 			if err != nil {
 				return err

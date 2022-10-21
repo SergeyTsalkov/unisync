@@ -147,6 +147,7 @@ func runServer() error {
 		s := server.New(conn, conn)
 		go func() {
 			if err := s.Run(); err != nil {
+				conn.Close()
 				log.Warnln(err)
 			}
 		}()
@@ -184,6 +185,9 @@ func runClient(sshclient myssh.SshClient, conf *config.Config) error {
 }
 
 func runDirectClient(conf *config.Config) error {
+	connectTimeout := time.Duration(conf.ConnectTimeout) * time.Second
+	timeout := time.Duration(conf.Timeout) * time.Second
+
 	mca, err := getMiniCa(false)
 	if err != nil {
 		return err
@@ -195,8 +199,8 @@ func runDirectClient(conf *config.Config) error {
 
 	dialer := &tls.Dialer{
 		NetDialer: &net.Dialer{
-			Timeout:   time.Duration(conf.ConnectTimeout) * time.Second,
-			KeepAlive: time.Duration(conf.Timeout) * time.Second,
+			Timeout:   connectTimeout,
+			KeepAlive: timeout,
 		},
 		Config: &tls.Config{
 			ServerName:   "unisync",
@@ -205,8 +209,7 @@ func runDirectClient(conf *config.Config) error {
 		},
 	}
 
-	addr := fmt.Sprintf("%v:%v", conf.Host, conf.Port)
-	conn, err := dialer.Dial("tcp", addr)
+	conn, err := dialer.Dial("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
 	if err != nil {
 		return err
 	}

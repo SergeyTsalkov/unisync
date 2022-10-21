@@ -28,13 +28,16 @@ type Node struct {
 	Buffer []byte
 
 	// most incoming packets go into MainC
-	MainC chan *Packet
-
 	// packets can be diverted to	SideC if they match sideCmatch
+	// if packet reader encounters an error, it writes it to InputErr
+	// and closes MainC and SideC
+	MainC      chan *Packet
 	sideCmatch map[string]struct{}
 	SideC      chan *Packet
+	InputErr   error
 
-	// packet reader errors will go into Errors channel
+	// errors channel is used for error reporting by other goroutines
+	// both client and server should watch it
 	Errors chan error
 }
 

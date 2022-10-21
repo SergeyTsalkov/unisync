@@ -55,8 +55,13 @@ func (n *Node) InputReader() {
 	}
 
 	if err != nil {
-		n.Errors <- err
+		n.InputErr = err
+	} else {
+		n.InputErr = fmt.Errorf("InputReader exited unexpectedly")
 	}
+
+	close(n.MainC)
+	close(n.SideC)
 }
 
 func (n *Node) SetSideC(matches ...string) {
@@ -65,8 +70,11 @@ func (n *Node) SetSideC(matches ...string) {
 	}
 }
 
-func (c *Node) WaitFor(expectCmd string) (commands.Command, *sync.WaitGroup, error) {
-	packet := <-c.MainC
+func (n *Node) WaitFor(expectCmd string) (commands.Command, *sync.WaitGroup, error) {
+	packet, ok := <-n.MainC
+	if !ok {
+		return nil, nil, n.InputErr
+	}
 
 	if cmdType := packet.Command.CmdType(); cmdType != expectCmd {
 		return nil, nil, fmt.Errorf("expected %v from server but got %v", expectCmd, cmdType)
