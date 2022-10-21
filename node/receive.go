@@ -23,7 +23,7 @@ func (n *Node) ReceiveFile(push *commands.Push, waiter *sync.WaitGroup) error {
 
 	for {
 		if push.BodyLen() > 0 {
-			_, err := copy.CopyNbuffer(file, n.In, int64(push.BodyLen()), Buffer)
+			_, err := copy.CopyNbuffer(file, n.In, int64(push.BodyLen()), n.Buffer)
 			if err != nil {
 				return err
 			}

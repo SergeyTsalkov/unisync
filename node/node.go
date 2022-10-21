@@ -13,8 +13,6 @@ import (
 	"unisync/watcher"
 )
 
-var Buffer = make([]byte, 1000000)
-
 type Node struct {
 	In        *bufio.Reader
 	Out       io.Writer
@@ -25,6 +23,9 @@ type Node struct {
 	Progress  chan progresswriter.Progress
 	writeLock *sync.Mutex
 	tmpdir    string
+
+	// buffer used to send and receive files
+	Buffer []byte
 
 	// most incoming packets go into MainC
 	MainC chan *Packet
@@ -41,6 +42,7 @@ func New(in io.Reader, out io.Writer) *Node {
 	node := &Node{
 		In:         bufio.NewReader(in),
 		Out:        out,
+		Buffer:     make([]byte, 1000000),
 		MainC:      make(chan *Packet),
 		SideC:      make(chan *Packet),
 		sideCmatch: map[string]struct{}{},
