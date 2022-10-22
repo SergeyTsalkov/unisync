@@ -19,11 +19,15 @@ type Node struct {
 	Out       io.Writer
 	IsServer  bool
 	Config    *config.Config
-	Watcher   *watcher.Watcher
 	basepath  string
 	Progress  chan progresswriter.Progress
 	writeLock *sync.Mutex
 	tmpdir    string
+
+	// watches for filesystem changes
+	// started by SetBasepath()
+	// can be stopped with Watcher.Stop()
+	Watcher *watcher.Watcher
 
 	// buffer used to send and receive files
 	Buffer []byte
@@ -36,6 +40,10 @@ type Node struct {
 	SideC      chan *Packet
 	sideCmatch map[string]struct{}
 
+	// announces to every goroutine when it's time to exit
+	// similar to Context, except it holds an error
+	// when SetDone(error) is called, every DoneC() channel will
+	// push the event and IsDone() will start returning that error
 	SetDone func(error)
 	IsDone  func() error
 	DoneC   func() chan error

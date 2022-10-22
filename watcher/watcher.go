@@ -36,11 +36,17 @@ func (w *Watcher) Start(basepath string, ignore []string) error {
 	return err
 }
 
+func (w *Watcher) Stop() {
+	notify.Stop(w.events)
+	close(w.events)
+}
+
 func (w *Watcher) Ready() {
 	w.drain()
 	w.enabled.Store(true)
 }
 
+// separate goroutine
 func (w *Watcher) monitor() {
 	for event := range w.events {
 		path, _ := filepath.Rel(w.basepath, event.Path())

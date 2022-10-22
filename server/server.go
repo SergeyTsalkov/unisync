@@ -21,7 +21,10 @@ func New(in io.Reader, out io.Writer) *Server {
 func (s *Server) Run() error {
 	go s.monitorProgress()
 
-	// this is safe because this main thread is the only one that pushes to s.Progress (via receive.go)
+	defer s.Watcher.Stop()
+
+	// this is safe because this main thread is the only one
+	// that pushes to s.Progress (via receive.go)
 	defer close(s.Progress)
 
 	for {
@@ -30,9 +33,8 @@ func (s *Server) Run() error {
 			if !ok {
 				if err := s.IsDone(); err != nil {
 					return err
-				} else {
-					return fmt.Errorf("connection closed")
 				}
+				return fmt.Errorf("connection closed")
 			}
 
 			err := s.handle(packet)
@@ -49,6 +51,7 @@ func (s *Server) Run() error {
 			}
 
 		case err := <-s.DoneC():
+			s.SendErr(err)
 			return err
 		}
 	}

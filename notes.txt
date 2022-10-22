@@ -13,13 +13,6 @@ example:
 
 TODO:
   - dump server connection on error, auto reconect and retry
-    
-
-  - server command line lets you choose IP/port
-  - log messages for server: connected, started syncing, connection lost, etc
-    better log messages for invalid cert disconnect
-  - server should remove watches when user disconnects
-    
   - test on Windows, OpenBSD, etc
   - use start/stop/stopall/status/log to manage background workers
 
