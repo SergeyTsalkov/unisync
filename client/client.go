@@ -70,7 +70,7 @@ func (c *Client) Run() error {
 			if err := c.Sync(); err != nil {
 				return err
 			}
-		case err := <-c.Errors:
+		case err := <-c.DoneC():
 			return err
 		}
 	}

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"io"
 	"unisync/commands"
 	"unisync/node"
@@ -27,21 +28,27 @@ func (s *Server) Run() error {
 		select {
 		case packet, ok := <-s.MainC:
 			if !ok {
-				return s.InputErr
+				if err := s.IsDone(); err != nil {
+					return err
+				} else {
+					return fmt.Errorf("connection closed")
+				}
 			}
 
 			err := s.handle(packet)
 			if err != nil {
+				s.SendErr(err)
 				return err
 			}
 
 		case <-s.Watcher.C:
 			err := s.handleWatch()
 			if err != nil {
+				s.SendErr(err)
 				return err
 			}
 
-		case err := <-s.Errors:
+		case err := <-s.DoneC():
 			return err
 		}
 	}
@@ -62,6 +69,6 @@ func (s *Server) monitorProgress() {
 	}
 
 	if err != nil {
-		s.Errors <- err
+		s.SetDone(err)
 	}
 }

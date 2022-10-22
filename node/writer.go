@@ -24,7 +24,7 @@ func (n *Node) SendCmdBuf(cmd commands.Command, buf []byte) error {
 		_, err = n.Write(buf)
 
 		if err != nil {
-			return &DeepError{err}
+			return err
 		}
 	}
 
@@ -41,7 +41,7 @@ func (n *Node) SendString(str string) error {
 	log.Debugf("-> %v", str)
 	_, err := io.WriteString(n, str+"\n")
 	if err != nil {
-		return &DeepError{err}
+		return err
 	}
 	return nil
 }

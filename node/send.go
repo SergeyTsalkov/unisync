@@ -46,8 +46,9 @@ func (n *Node) SendFile(path string) error {
 		if err == io.EOF {
 			more = false
 			err = nil
-		} else if err != nil {
-			return &DeepError{err}
+		}
+		if err != nil {
+			return err
 		}
 
 		push := &commands.Push{

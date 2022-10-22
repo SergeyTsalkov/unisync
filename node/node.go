@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sync"
 	"unisync/config"
+	"unisync/done"
 	"unisync/progresswriter"
 	"unisync/watcher"
 )
@@ -29,16 +30,15 @@ type Node struct {
 
 	// most incoming packets go into MainC
 	// packets can be diverted to	SideC if they match sideCmatch
-	// if packet reader encounters an error, it writes it to InputErr
+	// if packet reader encounters an error, it writes it to SetDone()
 	// and closes MainC and SideC
 	MainC      chan *Packet
-	sideCmatch map[string]struct{}
 	SideC      chan *Packet
-	InputErr   error
+	sideCmatch map[string]struct{}
 
-	// errors channel is used for error reporting by other goroutines
-	// both client and server should watch it
-	Errors chan error
+	SetDone func(error)
+	IsDone  func() error
+	DoneC   func() chan error
 }
 
 func New(in io.Reader, out io.Writer) *Node {
@@ -49,12 +49,12 @@ func New(in io.Reader, out io.Writer) *Node {
 		MainC:      make(chan *Packet),
 		SideC:      make(chan *Packet),
 		sideCmatch: map[string]struct{}{},
-		Errors:     make(chan error),
 		Watcher:    watcher.New(),
 		Progress:   make(chan progresswriter.Progress),
 		writeLock:  &sync.Mutex{},
 	}
 
+	node.SetDone, node.IsDone, node.DoneC = done.New()
 	go node.InputReader()
 	return node
 }

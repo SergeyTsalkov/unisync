@@ -1,22 +1,6 @@
 
 rsync --archive --delete --exclude='.git' --exclude='unisync' /Users/sergey/unisync/ sergey@ark:unisync
 
-{
-  local: /path/to/stuff
-  remote: /path/to/stuff
-  username: (required for ssh, ignored for directtls)
-  host: [ip]
-  port: (defaults to 22 for ssh, required for directtls)
-  method: ssh | nativessh | directtls
-  prefer: local | remote | newer | older (default: newer)
-  cache: filename (default: [name].cache)
-}
-
-mtls := minitls.New()
-mtls.Save("path/to/save") // save json of private key and CA cert
-minitls.Load("path/to/save")
-minitls.BuildAndSign() // returns signed cert, usable for client or server
-
 example:
   unisync ~/localpath user@host:remotepath/
   unisync myhost.json
@@ -28,8 +12,13 @@ example:
 
 
 TODO:
-  - error handling
-    - dump server connection on error, auto reconect and retry
+  - dump server connection on error, auto reconect and retry
+    
+
+  - server command line lets you choose IP/port
+  - log messages for server: connected, started syncing, connection lost, etc
+    better log messages for invalid cert disconnect
+  - server should remove watches when user disconnects
     
   - test on Windows, OpenBSD, etc
   - use start/stop/stopall/status/log to manage background workers

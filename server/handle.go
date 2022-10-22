@@ -1,7 +1,6 @@
 package server
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -145,11 +144,7 @@ func (s *Server) handlePULL(cmd commands.Command) error {
 	for _, path := range pull.Paths {
 		err := s.SendFile(path)
 		if err != nil {
-			if errors.Is(err, node.ErrDeep) {
-				return err
-			} else {
-				s.SendPathErr(path, err)
-			}
+			return err
 		}
 	}
 
