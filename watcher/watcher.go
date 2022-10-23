@@ -2,7 +2,7 @@ package watcher
 
 import (
 	"path/filepath"
-	"sync/atomic"
+	"sync"
 	"unisync/gitignore"
 
 	"github.com/rjeczalik/notify"
@@ -11,16 +11,16 @@ import (
 type Watcher struct {
 	C        chan string
 	events   chan notify.EventInfo
-	enabled  *atomic.Bool
+	enabled  bool
 	ignore   []string
 	basepath string
+	mutex    sync.Mutex
 }
 
 func New() *Watcher {
 	return &Watcher{
-		C:       make(chan string, 1),
-		events:  make(chan notify.EventInfo, 100),
-		enabled: &atomic.Bool{},
+		C:      make(chan string, 1),
+		events: make(chan notify.EventInfo, 100),
 	}
 }
 
@@ -42,8 +42,11 @@ func (w *Watcher) Stop() {
 }
 
 func (w *Watcher) Ready() {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	w.drain()
-	w.enabled.Store(true)
+	w.enabled = true
 }
 
 // separate goroutine
@@ -59,12 +62,15 @@ func (w *Watcher) monitor() {
 }
 
 func (w *Watcher) Send(path string) {
-	if enabled := w.enabled.Load(); !enabled {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	if !w.enabled {
 		return
 	}
 
 	// once we've seen an event, don't alert on any others until Ready() is called
-	w.enabled.Store(false)
+	w.enabled = false
 
 	// if there's no buffer room, just discard the event
 	select {
