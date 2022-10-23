@@ -7,7 +7,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
 	"unisync/config"
 	"unisync/log"
 	"unisync/myssh"
@@ -17,7 +16,8 @@ import (
 )
 
 type internalSshClient struct {
-	ssh *ssh.Client
+	ssh       *ssh.Client
+	locations []string
 }
 
 func New(conf *config.Config) (*internalSshClient, error) {
@@ -45,18 +45,20 @@ func New(conf *config.Config) (*internalSshClient, error) {
 		return nil, fmt.Errorf("no ssh_key available")
 	}
 
-	config := &ssh.ClientConfig{
+	sshConfig := &ssh.ClientConfig{
 		User: conf.User,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signers...),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         time.Duration(conf.ConnectTimeout) * time.Second,
+		Timeout:         config.Duration(conf.ConnectTimeout),
 	}
 
-	c := &internalSshClient{}
+	c := &internalSshClient{
+		locations: conf.RemoteUnisyncPath,
+	}
 	addr := fmt.Sprintf("%v:%v", conf.Host, conf.Port)
-	c.ssh, err = dial(addr, config, conf.Timeout)
+	c.ssh, err = dial(addr, sshConfig, conf.Timeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect: %w", err)
 	}
@@ -65,27 +67,27 @@ func New(conf *config.Config) (*internalSshClient, error) {
 }
 
 // replacement for ssh.Dial() to give us control over KeepAlive
-func dial(addr string, config *ssh.ClientConfig, timeout int) (*ssh.Client, error) {
+func dial(addr string, sshConfig *ssh.ClientConfig, keepAlive int) (*ssh.Client, error) {
 	dialer := net.Dialer{
-		Timeout:   config.Timeout,                       // config setting connect_timeout
-		KeepAlive: time.Duration(timeout) * time.Second, // config setting timeout
+		Timeout:   sshConfig.Timeout,
+		KeepAlive: config.Duration(keepAlive),
 	}
 	conn, err := dialer.Dial("tcp", addr)
 	if err != nil {
 		return nil, err
 	}
-	c, chans, reqs, err := ssh.NewClientConn(conn, addr, config)
+	c, chans, reqs, err := ssh.NewClientConn(conn, addr, sshConfig)
 	if err != nil {
 		return nil, err
 	}
 	return ssh.NewClient(c, chans, reqs), nil
 }
 
-func (c *internalSshClient) Search(locations []string) (string, error) {
+func (c *internalSshClient) search() (string, error) {
 	var err error
 	var output []byte
 
-	for _, location := range locations {
+	for _, location := range c.locations {
 		var session *ssh.Session
 		session, err = c.ssh.NewSession()
 		defer session.Close()
@@ -110,7 +112,16 @@ func (c *internalSshClient) Search(locations []string) (string, error) {
 	return "", fmt.Errorf("Unable to find unisync binary: %v", &myssh.SshError{err, output})
 }
 
-func (c *internalSshClient) Run(location string) (stdin io.Writer, stdout io.Reader, err error) {
+func (c *internalSshClient) Run() (stdin io.Writer, stdout io.Reader, err error) {
+	location := c.locations[0]
+	if len(c.locations) > 1 {
+		var err error
+		location, err = c.search()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	var session *ssh.Session
 	session, err = c.ssh.NewSession()
 	if err != nil {

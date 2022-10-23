@@ -12,8 +12,9 @@ import (
 )
 
 type externalSshClient struct {
-	sshcmd  []string
-	execCmd *exec.Cmd
+	sshcmd    []string
+	execCmd   *exec.Cmd
+	locations []string
 }
 
 func (c *externalSshClient) cmd(format string, a ...any) *exec.Cmd {
@@ -25,7 +26,9 @@ func (c *externalSshClient) cmd(format string, a ...any) *exec.Cmd {
 }
 
 func New(conf *config.Config) *externalSshClient {
-	c := &externalSshClient{}
+	c := &externalSshClient{
+		locations: conf.RemoteUnisyncPath,
+	}
 
 	if conf.Port != 22 {
 		conf.SshOpts += " " + fmt.Sprintf("-p %v", conf.Port)
@@ -46,11 +49,11 @@ func New(conf *config.Config) *externalSshClient {
 	return c
 }
 
-func (c *externalSshClient) Search(locations []string) (string, error) {
+func (c *externalSshClient) search() (string, error) {
 	var err error
 	var output []byte
 
-	for _, location := range locations {
+	for _, location := range c.locations {
 		execCmd := c.cmd("command -v %v", location)
 		output, err = execCmd.CombinedOutput()
 		if err != nil {
@@ -68,7 +71,16 @@ func (c *externalSshClient) Search(locations []string) (string, error) {
 	return "", fmt.Errorf("Unable to find unisync binary: %v", &myssh.SshError{err, output})
 }
 
-func (c *externalSshClient) Run(location string) (stdin io.Writer, stdout io.Reader, err error) {
+func (c *externalSshClient) Run() (stdin io.Writer, stdout io.Reader, err error) {
+	location := c.locations[0]
+	if len(c.locations) > 1 {
+		var err error
+		location, err = c.search()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	c.execCmd = c.cmd("%v -stdserver", location)
 
 	var stderr io.Reader

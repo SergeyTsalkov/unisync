@@ -50,6 +50,10 @@ type Node struct {
 }
 
 func New(in io.Reader, out io.Writer) *Node {
+	if in == nil || out == nil {
+		panic("Node: in and out can't be nil")
+	}
+
 	node := &Node{
 		In:         bufio.NewReader(in),
 		Out:        out,

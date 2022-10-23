@@ -12,19 +12,12 @@ import (
 	"time"
 )
 
+var keySize = 2048
+
 type MiniCA struct {
 	privateKey *rsa.PrivateKey
 	caCert     *x509.Certificate
-}
-
-func (m *MiniCA) makePrivateKey() error {
-	var err error
-	m.privateKey, err = rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	serverCert []tls.Certificate
 }
 
 func (m *MiniCA) makeCA() error {
@@ -61,7 +54,18 @@ func (m *MiniCA) GetCAPool() *x509.CertPool {
 	return pool
 }
 
-func (m *MiniCA) MakeCert() ([]tls.Certificate, error) {
+func (m *MiniCA) GetCert() ([]tls.Certificate, error) {
+	if m.serverCert == nil {
+		var err error
+		m.serverCert, err = m.makeCert()
+		if err != nil {
+			return nil, err
+		}
+	}
+	return m.serverCert, nil
+}
+
+func (m *MiniCA) makeCert() ([]tls.Certificate, error) {
 	cert := &x509.Certificate{
 		NotBefore:    time.Now().AddDate(-10, 0, 0),
 		NotAfter:     time.Now().AddDate(10, 0, 0),
@@ -72,7 +76,7 @@ func (m *MiniCA) MakeCert() ([]tls.Certificate, error) {
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 	}
 
-	certPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	certPrivKey, err := rsa.GenerateKey(rand.Reader, keySize)
 	if err != nil {
 		return nil, err
 	}
@@ -108,17 +112,20 @@ func (m *MiniCA) MakeCert() ([]tls.Certificate, error) {
 }
 
 func New(fullpath string) (*MiniCA, error) {
-	mca := &MiniCA{}
+	m := &MiniCA{}
+	var err error
 
-	if err := mca.makePrivateKey(); err != nil {
-		return nil, err
-	}
-	if err := mca.makeCA(); err != nil {
-		return nil, err
-	}
-	if err := mca.save(fullpath); err != nil {
+	m.privateKey, err = rsa.GenerateKey(rand.Reader, keySize)
+	if err != nil {
 		return nil, err
 	}
 
-	return mca, nil
+	if err := m.makeCA(); err != nil {
+		return nil, err
+	}
+	if err := m.save(fullpath); err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }

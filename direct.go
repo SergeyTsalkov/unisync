@@ -2,15 +2,13 @@ package main
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
-	"net"
 	"path/filepath"
 	"strings"
-	"time"
-	"unisync/client"
 	"unisync/config"
 	"unisync/log"
 	"unisync/minica"
@@ -18,11 +16,7 @@ import (
 )
 
 func runDirectServer(addr string) error {
-	mca, err := getMiniCa(true)
-	if err != nil {
-		return err
-	}
-	cert, err := mca.MakeCert()
+	cert, capool, err := getCert(true)
 	if err != nil {
 		return err
 	}
@@ -30,7 +24,7 @@ func runDirectServer(addr string) error {
 	conf := &tls.Config{
 		Certificates: cert,
 		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    mca.GetCAPool(),
+		ClientCAs:    capool,
 	}
 
 	if !strings.Contains(addr, ":") {
@@ -63,58 +57,30 @@ func runDirectServer(addr string) error {
 	}
 }
 
-func runDirectClient(conf *config.Config) error {
-	connectTimeout := time.Duration(conf.ConnectTimeout) * time.Second
-	timeout := time.Duration(conf.Timeout) * time.Second
+var mca *minica.MiniCA
 
-	mca, err := getMiniCa(false)
-	if err != nil {
-		return err
-	}
-	cert, err := mca.MakeCert()
-	if err != nil {
-		return err
-	}
+func getCert(canMake bool) ([]tls.Certificate, *x509.CertPool, error) {
+	if mca == nil {
+		var err error
+		fullpath := filepath.Join(config.ConfigDir(), "secure.key")
+		mca, err = minica.Load(fullpath)
 
-	dialer := &tls.Dialer{
-		NetDialer: &net.Dialer{
-			Timeout:   connectTimeout,
-			KeepAlive: timeout,
-		},
-		Config: &tls.Config{
-			ServerName:   "unisync",
-			Certificates: cert,
-			RootCAs:      mca.GetCAPool(),
-		},
-	}
+		if err != nil && canMake && errors.Is(err, fs.ErrNotExist) {
+			mca, err = minica.New(fullpath)
+			if err != nil {
+				return nil, nil, fmt.Errorf("Failed to create key at %v: %w", fullpath, err)
+			}
 
-	conn, err := dialer.Dial("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
-	if err != nil {
-		return err
-	}
-
-	c, err := client.New(conn, conn, conf)
-	if err != nil {
-		return err
-	}
-
-	return c.Run()
-}
-
-func getMiniCa(canMake bool) (*minica.MiniCA, error) {
-	fullpath := filepath.Join(config.ConfigDir(), "secure.key")
-	mca, err := minica.Load(fullpath)
-
-	if err != nil && canMake && errors.Is(err, fs.ErrNotExist) {
-		mca, err = minica.New(fullpath)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to create key at %v: %w", fullpath, err)
+			log.Printf("Created new key at %v, make sure to copy this to the client so it can connect!", fullpath)
+		} else if err != nil {
+			return nil, nil, fmt.Errorf("Failed to load key at %v: %w", fullpath, err)
 		}
-
-		log.Printf("Created new key at %v, make sure to copy this to the client so it can connect!", fullpath)
-	} else if err != nil {
-		return nil, fmt.Errorf("Failed to load key at %v: %w", fullpath, err)
 	}
 
-	return mca, nil
+	cert, err := mca.GetCert()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return cert, mca.GetCAPool(), nil
 }

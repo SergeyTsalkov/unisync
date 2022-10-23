@@ -1,14 +1,17 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
+	"io"
+	"net"
 	"os"
 	"strings"
+	"time"
 	"unisync/client"
 	"unisync/config"
 	"unisync/log"
-	"unisync/myssh"
 	"unisync/myssh/externalssh"
 	"unisync/myssh/internalssh"
 	"unisync/server"
@@ -62,30 +65,7 @@ func main() {
 			showHelp()
 		}
 
-		log.Printf("Connecting to %v@%v (%v)", conf.User, conf.Host, conf.Method)
-
-		if conf.Method == "ssh" {
-			sshclient := externalssh.New(conf)
-			if err := runClient(sshclient, conf); err != nil {
-				log.Fatalln(err)
-			}
-
-		} else if conf.Method == "internalssh" {
-			sshclient, err := internalssh.New(conf)
-			if err != nil {
-				log.Fatalln("ssh error:", err)
-			}
-			if err := runClient(sshclient, conf); err != nil {
-				log.Fatalln(err)
-			}
-
-		} else if conf.Method == "directtls" {
-			err := runDirectClient(conf)
-			if err != nil {
-				log.Fatalln(err)
-			}
-		}
-
+		runClient(conf)
 	}
 }
 
@@ -97,46 +77,76 @@ func runStdinServer() error {
 	return s.Run()
 }
 
-func runClient(sshclient myssh.SshClient, conf *config.Config) error {
-	location := conf.RemoteUnisyncPath[0]
-	if len(conf.RemoteUnisyncPath) > 1 {
-		var err error
-		location, err = sshclient.Search(conf.RemoteUnisyncPath)
+func runClient(conf *config.Config) {
+	retryTime := 5 * time.Second
+
+	for {
+		err := _runClient(conf)
+		if err != nil {
+			log.Warnln("Client disconnected:", err)
+		}
+
+		log.Printf("Retrying in %v..", retryTime)
+		time.Sleep(retryTime)
+	}
+}
+
+func _runClient(conf *config.Config) error {
+	var in io.Reader
+	var out io.Writer
+	var err error
+
+	log.Printf("Connecting to %v@%v (%v)", conf.User, conf.Host, conf.Method)
+
+	if conf.Method == "internalssh" {
+		sshclient, err := internalssh.New(conf)
+		if err != nil {
+			return err
+		}
+
+		out, in, err = sshclient.Run()
 		if err != nil {
 			return fmt.Errorf("ssh error: %v", err)
 		}
+
+	} else if conf.Method == "ssh" {
+		sshclient := externalssh.New(conf)
+		out, in, err = sshclient.Run()
+		if err != nil {
+			return fmt.Errorf("ssh error: %v", err)
+		}
+
+	} else if conf.Method == "directtls" {
+		cert, capool, err := getCert(false)
+		if err != nil {
+			return err
+		}
+
+		tlsdialer := &tls.Dialer{
+			NetDialer: &net.Dialer{
+				Timeout:   config.Duration(conf.ConnectTimeout),
+				KeepAlive: config.Duration(conf.Timeout),
+			},
+			Config: &tls.Config{
+				ServerName:   "unisync",
+				Certificates: cert,
+				RootCAs:      capool,
+			},
+		}
+
+		conn, err := tlsdialer.Dial("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
+		if err != nil {
+			return err
+		}
+		out = conn
+		in = conn
+	} else {
+		panic("conf.Method=" + conf.Method)
 	}
 
-	stdin, stdout, err := sshclient.Run(location)
-	if err != nil {
-		return fmt.Errorf("ssh error: %v", err)
-	}
-	c, err := client.New(stdout, stdin, conf)
+	c, err := client.New(in, out, conf)
 	if err != nil {
 		return err
 	}
 	return c.Run()
-}
-
-func showHelp() {
-	help :=
-		`
-unisync -- a continuous remote sync tool for programmers
-
-USAGE:
-  unisync myserver
-    reads config file from ~/.unisync/myserver.conf and syncs according to settings
-
-  unisync ~/localdir user@host:~/remotedir
-    runs continuous syncing between localdir and remotedir
-
-  unisync -server 18744
-  	runs a direct server, listening on port 18744
-  	use a client with method=directtls to connect to it
-
-`
-
-	fmt.Fprintf(os.Stderr, help)
-	// flag.PrintDefaults()
-	os.Exit(0)
 }

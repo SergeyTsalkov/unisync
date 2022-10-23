@@ -2,14 +2,8 @@ package myssh
 
 import (
 	"fmt"
-	"io"
 	"strings"
 )
-
-type SshClient interface {
-	Search([]string) (string, error)
-	Run(string) (io.Writer, io.Reader, error)
-}
 
 type SshError struct {
 	Err    error

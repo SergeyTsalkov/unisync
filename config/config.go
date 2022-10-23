@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 	"unisync/ini"
 	"unisync/log"
 )
@@ -265,4 +266,8 @@ func mkdirIfMissing(dir string, mode os.FileMode) error {
 		return nil
 	}
 	return os.Mkdir(dir, mode)
+}
+
+func Duration(seconds int) time.Duration {
+	return time.Duration(seconds) * time.Second
 }
