@@ -11,71 +11,12 @@ example:
   unisync -status (list jobs running in background)
 
 
-AUTO RETRY
-ssh and internalssh:
-  sshclient := [externalssh/internalssh].New(conf)
-  stdin, stdout, err := sshclient.Run() // implicitly searches locations
-  c, err := client.New(stdout, stdin, conf)
-  err = c.Run()
-
-directtls:
-  // don't re-make the cert on retry
-  mca, err := getMiniCa(false)
-  cert, err := mca.MakeCert()
-
-  conn, err := tlsdialer.Dial("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
-  c, err := client.New(conn, conn, conf)
-  err = c.Run()
-
-
-
-on error:
-  if we had successfully connected, wait 5s and retry
-  if we hadn't, just print error and exit
-
-
-
-runClient(conf):
-  for {
-    err, retry = _runClient(conf)
-    log.Println("error:", err)
-    if !retry {
-      break
-    }
-
-    log.Println("reconnecting in 5s..")
-    time.Sleep(5 seconds) 
-  }
-
-_runClient(conf):
-  var in
-  var out
-
-  if externalssh:
-    sshclient := externalssh.New(conf)
-    in, out, err = sshclient.Run()
-    defer sshclient.Close()
-  if internalssh:
-    sshclient := internalssh.New(conf)
-    in, out, err = sshclient.Run()
-    defer sshclient.Close()
-  if directtls:
-    cert = GetCert()
-    conn, err := tlsdialer.Dial("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
-    defer conn.Close()
-
-  c, err := client.New(conn, conn, conf)
-  err = c.Run()
-
-  
-
-
 
 TODO:
-  - only transmit relevant part of config file to server
-  - if we can't find remote path, explain how to install unisync remotely
-    
-  - dump connection on error, auto reconect and retry (this means client must be able to stop all threads)
+  - log should have "default output" and "default level" to we can easily switch between stdout and stderr
+  - ini should let us set a typeMap to map fs.FileMode to unmarshaling function
+  - if we can't find remote path, explain how to install unisync remotely  
+  
   - test on Windows, OpenBSD, etc
   - use start/stop/stopall/status/log to manage background workers
 

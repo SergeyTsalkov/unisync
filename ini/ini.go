@@ -21,6 +21,7 @@ func Unmarshal(data []byte, ptr any) error {
 
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
+		line = strings.TrimSpace(line)
 		key, value, valid := strings.Cut(line, "=")
 		if !valid {
 			continue
@@ -36,12 +37,12 @@ func Unmarshal(data []byte, ptr any) error {
 
 		v, ok := fieldMap[key]
 		if !ok {
-			return fmt.Errorf("invalid setting %v", key)
+			return fmt.Errorf("%v <-- invalid setting", line)
 		}
 
 		err = setValue(v, value)
 		if err != nil {
-			return err
+			return fmt.Errorf("%v <-- %v", line, err)
 		}
 	}
 
@@ -86,6 +87,13 @@ func getValue(str string, typ reflect.Type) (reflect.Value, error) {
 	if kind == reflect.String {
 		return reflect.ValueOf(str), nil
 
+	} else if kind == reflect.Bool {
+		bool, err := strconv.ParseBool(str)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("must be true or false")
+		}
+		return reflect.ValueOf(bool), nil
+
 	} else if kind == reflect.Int || kind == reflect.Int8 || kind == reflect.Int16 || kind == reflect.Int32 || kind == reflect.Int64 {
 		i, err := strconv.ParseInt(str, 10, 64)
 		if err != nil {
@@ -102,7 +110,7 @@ func getValue(str string, typ reflect.Type) (reflect.Value, error) {
 
 	}
 
-	return reflect.Value{}, fmt.Errorf("struct contains unknown type %v", typ)
+	return reflect.Value{}, fmt.Errorf("unknown type %v", typ)
 }
 
 func makeFieldMap(ptr any) (map[string]reflect.Value, error) {
@@ -130,7 +138,7 @@ func makeFieldMap(ptr any) (map[string]reflect.Value, error) {
 		}
 
 		var name string
-		if tagName := field.Tag.Get("json"); tagName != "" {
+		if tagName := field.Tag.Get("ini"); tagName != "" {
 			name, _, _ = strings.Cut(strings.ToLower(tagName), ",")
 		} else {
 			name = strings.ToLower(field.Name)

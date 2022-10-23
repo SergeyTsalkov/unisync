@@ -2,22 +2,23 @@ package main
 
 import (
 	"crypto/tls"
+	"crypto/x509"
+	"errors"
 	"flag"
 	"fmt"
-	"io"
-	"net"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"strings"
-	"time"
-	"unisync/client"
 	"unisync/config"
 	"unisync/log"
-	"unisync/myssh/externalssh"
-	"unisync/myssh/internalssh"
-	"unisync/server"
+	"unisync/minica"
 )
 
+var mca *minica.MiniCA
+
 func main() {
+	debugFlag := flag.Bool("debug", false, "debug mode")
 	stdServerFlag := flag.Bool("stdserver", false, "run server that uses stdin/stdout (internal use only)")
 	serverFlag := flag.String("server", "", "run server")
 	flag.Parse()
@@ -48,6 +49,14 @@ func main() {
 		conf.Host = host
 	}
 
+	if *debugFlag {
+		conf.Debug = true
+	}
+	if conf.Debug {
+		log.Reset()
+		log.Add(os.Stdout, log.Debug, "")
+	}
+
 	if *stdServerFlag {
 		err := runStdinServer()
 		if err != nil {
@@ -69,84 +78,28 @@ func main() {
 	}
 }
 
-func runStdinServer() error {
-	log.Reset()
-	log.Add(os.Stderr, log.Warn, "")
+func getCert(canMake bool) ([]tls.Certificate, *x509.CertPool, error) {
+	if mca == nil {
+		var err error
+		fullpath := filepath.Join(config.ConfigDir(), "secure.key")
+		mca, err = minica.Load(fullpath)
 
-	s := server.New(os.Stdin, os.Stdout)
-	return s.Run()
-}
+		if err != nil && canMake && errors.Is(err, fs.ErrNotExist) {
+			mca, err = minica.New(fullpath)
+			if err != nil {
+				return nil, nil, fmt.Errorf("Failed to create key at %v: %w", fullpath, err)
+			}
 
-func runClient(conf *config.Config) {
-	retryTime := 5 * time.Second
-
-	for {
-		err := _runClient(conf)
-		if err != nil {
-			log.Warnln("Client disconnected:", err)
+			log.Printf("Created new key at %v, make sure to copy this to the client so it can connect!", fullpath)
+		} else if err != nil {
+			return nil, nil, fmt.Errorf("Failed to load key at %v: %w", fullpath, err)
 		}
-
-		log.Printf("Retrying in %v..", retryTime)
-		time.Sleep(retryTime)
-	}
-}
-
-func _runClient(conf *config.Config) error {
-	var in io.Reader
-	var out io.Writer
-	var err error
-
-	log.Printf("Connecting to %v@%v (%v)", conf.User, conf.Host, conf.Method)
-
-	if conf.Method == "internalssh" {
-		sshclient, err := internalssh.New(conf)
-		if err != nil {
-			return err
-		}
-
-		out, in, err = sshclient.Run()
-		if err != nil {
-			return fmt.Errorf("ssh error: %v", err)
-		}
-
-	} else if conf.Method == "ssh" {
-		sshclient := externalssh.New(conf)
-		out, in, err = sshclient.Run()
-		if err != nil {
-			return fmt.Errorf("ssh error: %v", err)
-		}
-
-	} else if conf.Method == "directtls" {
-		cert, capool, err := getCert(false)
-		if err != nil {
-			return err
-		}
-
-		tlsdialer := &tls.Dialer{
-			NetDialer: &net.Dialer{
-				Timeout:   config.Duration(conf.ConnectTimeout),
-				KeepAlive: config.Duration(conf.Timeout),
-			},
-			Config: &tls.Config{
-				ServerName:   "unisync",
-				Certificates: cert,
-				RootCAs:      capool,
-			},
-		}
-
-		conn, err := tlsdialer.Dial("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
-		if err != nil {
-			return err
-		}
-		out = conn
-		in = conn
-	} else {
-		panic("conf.Method=" + conf.Method)
 	}
 
-	c, err := client.New(in, out, conf)
+	cert, err := mca.GetCert()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
-	return c.Run()
+
+	return cert, mca.GetCAPool(), nil
 }

@@ -18,32 +18,35 @@ import (
 var once sync.Once
 var configDir string
 
+// json is only used to transmit the needed parts of config to server
+// ini is used to parse the conf file on the client
 type Config struct {
-	Name           string   `json:"name"`
-	Local          string   `json:"local"`
-	Remote         string   `json:"remote"`
-	User           string   `json:"user"`
-	Host           string   `json:"host"`
-	Port           int      `json:"port"`
-	Method         string   `json:"method"`
-	Prefer         string   `json:"prefer"'`
-	Ignore         []string `json:"ignore"`
-	Tmpdir         string   `json:"tmpdir"`
-	RemoteTmpdir   string   `json:"remote_tmpdir"`
-	SshPath        string   `json:"ssh_path"`
-	SshOpts        string   `json:"ssh_opts"`
-	SshKeys        []string `json:"ssh_key"`
-	Timeout        int      `json:"timeout"`
-	ConnectTimeout int      `json:"connect_timeout"`
+	Name           string   `json:"name" ini:"name"`
+	Local          string   `json:"-" ini:"local"`
+	Remote         string   `json:"remote" ini:"remote"`
+	User           string   `json:"-" ini:"user"`
+	Host           string   `json:"-" ini:"host"`
+	Port           int      `json:"-" ini:"port"`
+	Method         string   `json:"-" ini:"method"`
+	Prefer         string   `json:"-"' ini:"prefer"`
+	Ignore         []string `json:"ignore" ini:"ignore"`
+	Tmpdir         string   `json:"-" ini:"tmpdir"`
+	RemoteTmpdir   string   `json:"remote_tmpdir" ini:"remote_tmpdir"`
+	SshPath        string   `json:"-" ini:"ssh_path"`
+	SshOpts        string   `json:"-" ini:"ssh_opts"`
+	SshKeys        []string `json:"-" ini:"ssh_key"`
+	Timeout        int      `json:"-" ini:"timeout"`
+	ConnectTimeout int      `json:"-" ini:"connect_timeout"`
+	Debug          bool     `json:"-" ini:"debug"`
 
-	RemoteUnisyncPath []string `json:"remote_unisync_path"`
+	RemoteUnisyncPath []string `json:"-" ini:"remote_unisync_path"`
 
-	ChmodLocal     FileMode `json:"chmod_local"`
-	ChmodLocalDir  FileMode `json:"chmod_local_dir"`
-	ChmodRemote    FileMode `json:"chmod_remote"`
-	ChmodRemoteDir FileMode `json:"chmod_remote_dir"`
-	ChmodMask      FileMode `json:"chmod_mask"`
-	ChmodDirMask   FileMode `json:"chmod_dir_mask"`
+	ChmodLocal     FileMode `json:"chmod_local" ini:"chmod_local"`
+	ChmodLocalDir  FileMode `json:"chmod_local_dir" ini:"chmod_local_dir"`
+	ChmodRemote    FileMode `json:"chmod_remote" ini:"chmod_remote"`
+	ChmodRemoteDir FileMode `json:"chmod_remote_dir" ini:"chmod_remote_dir"`
+	ChmodMask      FileMode `json:"chmod_mask" ini:"chmod_mask"`
+	ChmodDirMask   FileMode `json:"chmod_dir_mask" ini:"chmod_dir_mask"`
 }
 
 type FileMode struct {

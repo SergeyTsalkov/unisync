@@ -54,6 +54,7 @@ func (c *Client) SideChannelReader() {
 
 func (c *Client) Run() error {
 	go c.SideChannelReader()
+	defer c.Watcher.Stop()
 
 	if err := c.RunHello(); err != nil {
 		return err
