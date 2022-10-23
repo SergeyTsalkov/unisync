@@ -13,7 +13,6 @@ example:
 
 
 TODO:
-  - log should have "default output" and "default level" to we can easily switch between stdout and stderr
   - ini should let us set a typeMap to map fs.FileMode to unmarshaling function
   - if we can't find remote path, explain how to install unisync remotely  
   

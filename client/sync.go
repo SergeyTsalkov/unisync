@@ -199,8 +199,7 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 }
 
 func (c *Client) startProgressBar() func() {
-	loglevel, ok := log.GetLevel(os.Stdout)
-	if !ok || loglevel > log.Notice || !progressbar.CanUse() {
+	if log.ScreenOutput == nil || log.ScreenLevel > log.Notice || !progressbar.CanUse() {
 		return func() {}
 	}
 

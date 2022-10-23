@@ -21,7 +21,11 @@ type Output struct {
 	Timestamp string
 }
 
-var Outputs = []*Output{&Output{os.Stdout, Notice, ""}}
+var ScreenOutput io.Writer = os.Stdout
+var ScreenLevel uint8 = Notice
+var ScreenTimestmap = ""
+
+var Outputs = []*Output{}
 
 func writeTo(w io.Writer, ts, str string) error {
 	var err error
@@ -37,11 +41,16 @@ func writeTo(w io.Writer, ts, str string) error {
 }
 
 func write(level uint8, str string) error {
-	var err error
+	if ScreenOutput != nil && level >= ScreenLevel {
+		err := writeTo(ScreenOutput, ScreenTimestmap, str)
+		if err != nil {
+			return err
+		}
+	}
 
 	for _, output := range Outputs {
 		if level >= output.Level {
-			err = writeTo(output.Writer, output.Timestamp, str)
+			err := writeTo(output.Writer, output.Timestamp, str)
 			if err != nil {
 				return err
 			}
@@ -58,15 +67,15 @@ func Reset() {
 	Outputs = []*Output{}
 }
 
-func GetLevel(w io.Writer) (uint8, bool) {
-	for _, output := range Outputs {
-		if output.Writer == w {
-			return output.Level, true
-		}
-	}
+// func GetLevel(w io.Writer) (uint8, bool) {
+// 	for _, output := range Outputs {
+// 		if output.Writer == w {
+// 			return output.Level, true
+// 		}
+// 	}
 
-	return 0, false
-}
+// 	return 0, false
+// }
 
 func Debugln(a ...any) error {
 	return write(Debug, fmt.Sprintln(a...))

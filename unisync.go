@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 	"unisync/config"
@@ -49,14 +48,6 @@ func main() {
 		conf.Host = host
 	}
 
-	if *debugFlag {
-		conf.Debug = true
-	}
-	if conf.Debug {
-		log.Reset()
-		log.Add(os.Stdout, log.Debug, "")
-	}
-
 	if *stdServerFlag {
 		err := runStdinServer()
 		if err != nil {
@@ -72,6 +63,12 @@ func main() {
 	} else {
 		if conf == nil {
 			showHelp()
+		}
+		if *debugFlag {
+			conf.Debug = true
+		}
+		if conf.Debug {
+			log.ScreenLevel = log.Debug
 		}
 
 		runClient(conf)

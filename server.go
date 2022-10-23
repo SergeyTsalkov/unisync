@@ -11,8 +11,8 @@ import (
 )
 
 func runStdinServer() error {
-	log.Reset()
-	log.Add(os.Stderr, log.Warn, "")
+	log.ScreenOutput = os.Stderr
+	log.ScreenLevel = log.Warn
 
 	s := server.New(os.Stdin, os.Stdout)
 	return s.Run()
