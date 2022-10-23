@@ -12,7 +12,6 @@ example:
 
 
 TODO:
-  - progresswriter.go: store percent as double so we can calculate ETA when there's <1% progress
   - talk to Pageant on windows
     https://github.com/kbolino/pageant
     https://github.com/davidmz/go-pageant

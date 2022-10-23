@@ -2,6 +2,7 @@ package progresswriter
 
 import (
 	"io"
+	"math"
 	"sync/atomic"
 	"time"
 )
@@ -11,8 +12,7 @@ type progressWriter struct {
 	closed  atomic.Bool
 	c       chan Progress
 	start   time.Time
-	percent atomic.Int64
-	written int64
+	written atomic.Int64
 	total   int64
 }
 
@@ -35,8 +35,7 @@ func New(w io.WriteCloser, total int64, c chan Progress) *progressWriter {
 
 func (pw *progressWriter) Write(p []byte) (n int, err error) {
 	n, err = pw.writer.Write(p)
-	pw.written += int64(n)
-	pw.percent.Store(int64((float64(pw.written) / float64(pw.total)) * 100.0))
+	pw.written.Add(int64(n))
 	return n, err
 }
 
@@ -53,13 +52,13 @@ func (pw *progressWriter) watch() {
 			return
 		}
 
-		percent := int(pw.percent.Load())
+		percent := (float64(pw.written.Load()) / float64(pw.total)) * 100.0
 		eta := time.Duration(0)
 		if percent > 0 {
 			runtime := time.Since(pw.start)
-			eta = time.Duration(float64(runtime) * (float64(100-percent) / float64(percent)))
+			eta = time.Duration(float64(runtime) * ((100.0 - percent) / percent))
 		}
-		progress := Progress{percent, int(eta.Seconds())}
+		progress := Progress{int(math.Round(percent)), int(eta.Seconds())}
 
 		select {
 		case pw.c <- progress:
