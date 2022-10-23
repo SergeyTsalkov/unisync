@@ -12,10 +12,7 @@ example:
 
 
 TODO:
-  - talk to Pageant on windows
-    https://github.com/kbolino/pageant
-    https://github.com/davidmz/go-pageant
-
+  - only transmit relevant part of config file to server
   - if we can't find remote path, explain how to install unisync remotely
     
   - dump connection on error, auto reconect and retry (this means client must be able to stop all threads)

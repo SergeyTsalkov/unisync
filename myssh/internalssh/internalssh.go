@@ -11,6 +11,7 @@ import (
 	"unisync/config"
 	"unisync/log"
 	"unisync/myssh"
+	"unisync/pageant"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -20,20 +21,34 @@ type internalSshClient struct {
 }
 
 func New(conf *config.Config) (*internalSshClient, error) {
-	key, err := os.ReadFile(conf.SshKey)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read private key: %w", err)
+	var signers []ssh.Signer
+	var err error
+
+	if pSigners, err := pageant.GetSigners(); err == nil && len(pSigners) > 0 {
+		signers = append(signers, pSigners...)
 	}
 
-	signer, err := ssh.ParsePrivateKey(key)
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse private key: %w", err)
+	for _, keypath := range conf.SshKeys {
+		key, err := os.ReadFile(keypath)
+		if err != nil {
+			return nil, fmt.Errorf("unable to read private key: %w", err)
+		}
+
+		signer, err := ssh.ParsePrivateKey(key)
+		if err != nil {
+			return nil, fmt.Errorf("unable to parse private key: %w", err)
+		}
+		signers = append(signers, signer)
+	}
+
+	if len(signers) == 0 {
+		return nil, fmt.Errorf("no ssh_key available")
 	}
 
 	config := &ssh.ClientConfig{
 		User: conf.User,
 		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
+			ssh.PublicKeys(signers...),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(conf.ConnectTimeout) * time.Second,

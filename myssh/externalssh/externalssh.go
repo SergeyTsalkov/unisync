@@ -30,8 +30,8 @@ func New(conf *config.Config) *externalSshClient {
 	if conf.Port != 22 {
 		conf.SshOpts += " " + fmt.Sprintf("-p %v", conf.Port)
 	}
-	if conf.SshKey != "" {
-		conf.SshOpts += " " + fmt.Sprintf("-i %v", conf.SshKey)
+	for _, keypath := range conf.SshKeys {
+		conf.SshOpts += " " + fmt.Sprintf("-i %v", keypath)
 	}
 	if conf.ConnectTimeout > 0 {
 		conf.SshOpts += " " + fmt.Sprintf("-o ConnectTimeout=%v", conf.ConnectTimeout)

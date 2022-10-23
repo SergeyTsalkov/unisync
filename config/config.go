@@ -31,7 +31,7 @@ type Config struct {
 	RemoteTmpdir   string   `json:"remote_tmpdir"`
 	SshPath        string   `json:"ssh_path"`
 	SshOpts        string   `json:"ssh_opts"`
-	SshKey         string   `json:"ssh_key"`
+	SshKeys        []string `json:"ssh_key"`
 	Timeout        int      `json:"timeout"`
 	ConnectTimeout int      `json:"connect_timeout"`
 
@@ -165,25 +165,22 @@ func (c *Config) Validate() error {
 		if c.Host == "" {
 			return fmt.Errorf(setting_missing_error, "host")
 		}
-		if c.SshKey != "" && !IsFile(c.SshKey) {
-			return fmt.Errorf("ssh_key=%v <-- file does not exist", c.SshKey)
+		for _, sshkey := range c.SshKeys {
+			if !IsFile(sshkey) {
+				return fmt.Errorf("ssh_key=%v <-- file does not exist", sshkey)
+			}
 		}
 	}
 	if c.Method == "directtls" && c.Port == 0 {
 		return fmt.Errorf(setting_missing_error, "port")
 	}
-	if c.Method == "internalssh" && c.SshKey == "" {
+	if c.Method == "internalssh" && len(c.SshKeys) == 0 {
 		options := []string{"id_rsa", "id_ecdsa", "id_ed25519", "id_dsa", "identity"}
 		for _, option := range options {
 			option = filepath.Join(HomeDir(), ".ssh", option)
 			if IsFile(option) {
-				c.SshKey = option
-				break
+				c.SshKeys = append(c.SshKeys, option)
 			}
-		}
-
-		if c.SshKey == "" {
-			return fmt.Errorf(setting_missing_error, "ssh_key")
 		}
 	}
 
