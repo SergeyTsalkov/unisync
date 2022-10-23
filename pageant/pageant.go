@@ -1,3 +1,6 @@
+//go:build windows
+// +build windows
+
 // Taken from https://github.com/kbolino/pageant for unisync
 // Package pageant provides native Go support for using PuTTY Pageant as an
 // SSH agent with the golang.org/x/crypto/ssh/agent package.
