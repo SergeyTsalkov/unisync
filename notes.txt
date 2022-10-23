@@ -12,6 +12,12 @@ example:
 
 
 TODO:
+  - on Windows, how do we generate an ssh key if ssh.exe is not installed and they use putty?
+    - ssh_key= should support putty *.ppk keys (https://github.com/kayrus/putty)
+    - if we don't have ssh or putty installed, maybe generate an rsa key?
+
+  - if we can't find remote path, explain how to install unisync remotely
+    
   - dump server connection on error, auto reconect and retry
   - test on Windows, OpenBSD, etc
   - use start/stop/stopall/status/log to manage background workers

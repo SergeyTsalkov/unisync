@@ -31,7 +31,7 @@ func New(conf *config.Config) (*internalSshClient, error) {
 	}
 
 	config := &ssh.ClientConfig{
-		User: conf.Username,
+		User: conf.User,
 		Auth: []ssh.AuthMethod{
 			ssh.PublicKeys(signer),
 		},

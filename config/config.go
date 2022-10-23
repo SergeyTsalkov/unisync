@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -20,7 +21,7 @@ type Config struct {
 	Name           string   `json:"name"`
 	Local          string   `json:"local"`
 	Remote         string   `json:"remote"`
-	Username       string   `json:"username"`
+	User           string   `json:"user"`
 	Host           string   `json:"host"`
 	Port           int      `json:"port"`
 	Method         string   `json:"method"`
@@ -78,11 +79,9 @@ func New() *Config {
 	config := Config{
 		SshPath:        "ssh",
 		SshOpts:        "-e none -o BatchMode=yes -o StrictHostKeyChecking=no",
-		Method:         "ssh",
 		Prefer:         "newest",
 		Timeout:        300,
 		ConnectTimeout: 30,
-		Port:           22,
 		ChmodLocal:     FileMode{0644},
 		ChmodRemote:    FileMode{0644},
 		ChmodLocalDir:  FileMode{0755},
@@ -131,11 +130,21 @@ func Parse(path string) (*Config, error) {
 }
 
 func (c *Config) Validate() error {
+	setting_missing_error := "setting %v is required (and missing)"
+
 	if c.Local == "" {
-		return fmt.Errorf("setting local is required (and missing)")
+		return fmt.Errorf(setting_missing_error, "local")
 	}
 	if c.Remote == "" {
-		return fmt.Errorf("setting remote is required (and missing)")
+		return fmt.Errorf(setting_missing_error, "remote")
+	}
+
+	if c.Method == "" {
+		if runtime.GOOS == "windows" {
+			c.Method = "internalssh"
+		} else {
+			c.Method = "ssh"
+		}
 	}
 	if err := validateInArray("prefer", c.Prefer, []string{"newest", "oldest", "local", "remote"}); err != nil {
 		return err
@@ -146,8 +155,36 @@ func (c *Config) Validate() error {
 	if !strings.Contains(c.SshOpts, "-e none") {
 		return fmt.Errorf(`setting ssh_opts must contain "-e none"`)
 	}
+	if c.Method == "internalssh" || c.Method == "ssh" {
+		if c.Port == 0 {
+			c.Port = 22
+		}
+		if c.User == "" {
+			return fmt.Errorf(setting_missing_error, "user")
+		}
+		if c.Host == "" {
+			return fmt.Errorf(setting_missing_error, "host")
+		}
+		if c.SshKey != "" && !IsFile(c.SshKey) {
+			return fmt.Errorf("ssh_key=%v <-- file does not exist", c.SshKey)
+		}
+	}
+	if c.Method == "directtls" && c.Port == 0 {
+		return fmt.Errorf(setting_missing_error, "port")
+	}
 	if c.Method == "internalssh" && c.SshKey == "" {
-		return fmt.Errorf("if you use method=internalssh, ssh_key= must also be set")
+		options := []string{"id_rsa", "id_ecdsa", "id_ed25519", "id_dsa", "identity"}
+		for _, option := range options {
+			option = filepath.Join(HomeDir(), ".ssh", option)
+			if IsFile(option) {
+				c.SshKey = option
+				break
+			}
+		}
+
+		if c.SshKey == "" {
+			return fmt.Errorf(setting_missing_error, "ssh_key")
+		}
 	}
 
 	if len(c.RemoteUnisyncPath) == 0 {
@@ -155,6 +192,16 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+func validateInArray(name, value string, options []string) error {
+	for _, option := range options {
+		if value == option {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("setting %v must be one of: %v", name, strings.Join(options, ", "))
 }
 
 func ConfigDir() string {
@@ -175,19 +222,22 @@ func ConfigDir() string {
 	return configDir
 }
 
+func HomeDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatalln("Your $HOME is not set:", err)
+	}
+	if home == "" {
+		log.Fatalln("Your $HOME is not set")
+	}
+	return home
+}
+
 func ResolvePath(oldpath string) (string, error) {
 	newpath := oldpath
 
 	if strings.HasPrefix(newpath, "~/") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("Unable to resolve %v: %w", oldpath, err)
-		}
-		if home == "" {
-			return "", fmt.Errorf("Unable to resolve %v: your $HOME is not set", oldpath)
-		}
-
-		newpath = strings.Replace(newpath, "~", home, 1)
+		newpath = strings.Replace(newpath, "~", HomeDir(), 1)
 	}
 
 	var err error
@@ -197,16 +247,6 @@ func ResolvePath(oldpath string) (string, error) {
 	}
 
 	return newpath, nil
-}
-
-func validateInArray(name, value string, options []string) error {
-	for _, option := range options {
-		if value == option {
-			return nil
-		}
-	}
-
-	return fmt.Errorf("setting %v must be one of: %v", name, strings.Join(options, ", "))
 }
 
 func IsFile(file string) bool {

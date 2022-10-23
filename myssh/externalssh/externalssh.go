@@ -30,6 +30,9 @@ func New(conf *config.Config) *externalSshClient {
 	if conf.Port != 22 {
 		conf.SshOpts += " " + fmt.Sprintf("-p %v", conf.Port)
 	}
+	if conf.SshKey != "" {
+		conf.SshOpts += " " + fmt.Sprintf("-i %v", conf.SshKey)
+	}
 	if conf.ConnectTimeout > 0 {
 		conf.SshOpts += " " + fmt.Sprintf("-o ConnectTimeout=%v", conf.ConnectTimeout)
 	}
@@ -37,11 +40,8 @@ func New(conf *config.Config) *externalSshClient {
 		// when BatchMode is on, the default ServerAliveInterval is already 300
 		conf.SshOpts += " " + fmt.Sprintf("-o ServerAliveInterval=%v", conf.Timeout)
 	}
-	if conf.SshKey != "" {
-		conf.SshOpts += " " + fmt.Sprintf("-o IdentityFile=%v", conf.SshKey)
-	}
 
-	sshcmd := fmt.Sprintf("%v %v %v@%v", conf.SshPath, conf.SshOpts, conf.Username, conf.Host)
+	sshcmd := fmt.Sprintf("%v %v %v@%v", conf.SshPath, conf.SshOpts, conf.User, conf.Host)
 	c.sshcmd = strings.Split(sshcmd, " ")
 	return c
 }

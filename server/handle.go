@@ -44,12 +44,7 @@ func (s *Server) handleHELLO(cmd commands.Command) error {
 	hello := cmd.(*commands.Hello)
 
 	s.Config = hello.Config
-	err := s.Config.Validate()
-	if err != nil {
-		return err
-	}
-
-	err = s.SetBasepath(s.Config.Remote)
+	err := s.SetBasepath(s.Config.Remote)
 	if err != nil {
 		return fmt.Errorf("Unable to set basepath: %w", err)
 	}

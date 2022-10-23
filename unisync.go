@@ -41,7 +41,7 @@ func main() {
 		conf = config.New()
 		conf.Local = args[0]
 		conf.Remote = remotepath
-		conf.Username = user
+		conf.User = user
 		conf.Host = host
 	}
 
@@ -62,7 +62,7 @@ func main() {
 			showHelp()
 		}
 
-		log.Printf("Connecting to %v@%v (%v)", conf.Username, conf.Host, conf.Method)
+		log.Printf("Connecting to %v@%v (%v)", conf.User, conf.Host, conf.Method)
 
 		if conf.Method == "ssh" {
 			sshclient := externalssh.New(conf)
