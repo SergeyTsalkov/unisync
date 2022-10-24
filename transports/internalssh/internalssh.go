@@ -2,6 +2,7 @@ package internalssh
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"net"
@@ -9,7 +10,6 @@ import (
 	"strings"
 	"unisync/config"
 	"unisync/log"
-	"unisync/myssh"
 	"unisync/pageant"
 
 	"golang.org/x/crypto/ssh"
@@ -97,19 +97,20 @@ func (c *internalSshClient) search() (string, error) {
 		}
 
 		output, err = session.CombinedOutput("command -v " + location)
+		output = bytes.TrimSpace(output)
 		if err != nil {
 			if exitError, ok := err.(*ssh.ExitError); ok {
 				if exitError.ExitStatus() == 1 {
 					continue
 				}
 			}
-			return "", &myssh.SshError{err, output}
+			return "", fmt.Errorf("%s (%w)", output, err)
 		}
 
 		return location, nil
 	}
 
-	return "", fmt.Errorf("Unable to find unisync binary: %v", &myssh.SshError{err, output})
+	return "", fmt.Errorf("Unable to find unisync binary: %s (%w)", output, err)
 }
 
 func (c *internalSshClient) Run() (stdin io.Writer, stdout io.Reader, err error) {
@@ -157,7 +158,7 @@ func (c *internalSshClient) Close() error {
 }
 
 // separate goroutine
-func (c *externalSshClient) logerr(stderr io.Reader) {
+func (c *internalSshClient) logerr(stderr io.Reader) {
 	reader := bufio.NewReader(stderr)
 	var err error
 

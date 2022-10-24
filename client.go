@@ -1,16 +1,15 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io"
-	"net"
 	"time"
 	"unisync/client"
 	"unisync/config"
 	"unisync/log"
-	"unisync/myssh/externalssh"
-	"unisync/myssh/internalssh"
+	"unisync/transports/externalssh"
+	"unisync/transports/internalssh"
+	"unisync/transports/tlsclient"
 )
 
 func runClient(conf *config.Config) {
@@ -66,26 +65,14 @@ func _runClient(conf *config.Config) error {
 		if err != nil {
 			return err
 		}
+		tlsc := tlsclient.New(conf, cert, capool)
+		defer tlsc.Close()
 
-		tlsdialer := &tls.Dialer{
-			NetDialer: &net.Dialer{
-				Timeout:   config.Duration(conf.ConnectTimeout),
-				KeepAlive: config.Duration(conf.Timeout),
-			},
-			Config: &tls.Config{
-				ServerName:   "unisync",
-				Certificates: cert,
-				RootCAs:      capool,
-			},
-		}
-
-		conn, err := tlsdialer.Dial("tcp", fmt.Sprintf("%v:%v", conf.Host, conf.Port))
+		out, in, err = tlsc.Run()
 		if err != nil {
 			return err
 		}
-		defer conn.Close()
-		out = conn
-		in = conn
+
 	} else {
 		panic("conf.Method=" + conf.Method)
 	}

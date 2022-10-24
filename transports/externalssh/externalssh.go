@@ -2,13 +2,13 @@ package externalssh
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"os/exec"
 	"strings"
 	"unisync/config"
 	"unisync/log"
-	"unisync/myssh"
 )
 
 type externalSshClient struct {
@@ -56,19 +56,20 @@ func (c *externalSshClient) search() (string, error) {
 	for _, location := range c.locations {
 		execCmd := c.cmd("command -v %v", location)
 		output, err = execCmd.CombinedOutput()
+		output = bytes.TrimSpace(output)
 		if err != nil {
 			if exitError, ok := err.(*exec.ExitError); ok {
 				if exitError.ExitCode() == 1 {
 					continue
 				}
 			}
-			return "", &myssh.SshError{err, output}
+			return "", fmt.Errorf("%s (%w)", output, err)
 		}
 
 		return location, nil
 	}
 
-	return "", fmt.Errorf("Unable to find unisync binary: %v", &myssh.SshError{err, output})
+	return "", fmt.Errorf("Unable to find unisync binary: %s (%w)", output, err)
 }
 
 func (c *externalSshClient) Run() (stdin io.Writer, stdout io.Reader, err error) {
