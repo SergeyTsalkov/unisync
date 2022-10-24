@@ -39,6 +39,7 @@ func _runClient(conf *config.Config) error {
 		if err != nil {
 			return err
 		}
+		defer sshclient.Close()
 
 		out, in, err = sshclient.Run()
 		if err != nil {
@@ -46,13 +47,21 @@ func _runClient(conf *config.Config) error {
 		}
 
 	} else if conf.Method == "ssh" {
+
 		sshclient := externalssh.New(conf)
+		defer func() {
+			err := sshclient.Close()
+			if err != nil {
+				log.Warnln("ssh client exited:", err)
+			}
+		}()
 		out, in, err = sshclient.Run()
 		if err != nil {
 			return fmt.Errorf("ssh error: %v", err)
 		}
 
 	} else if conf.Method == "directtls" {
+
 		cert, capool, err := getCert(false)
 		if err != nil {
 			return err
@@ -74,6 +83,7 @@ func _runClient(conf *config.Config) error {
 		if err != nil {
 			return err
 		}
+		defer conn.Close()
 		out = conn
 		in = conn
 	} else {

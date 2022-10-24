@@ -99,30 +99,36 @@ func (c *externalSshClient) Run() (stdin io.Writer, stdout io.Reader, err error)
 		return
 	}
 
-	go c.wait(stderr)
+	go c.logerr(stderr)
 	return
 }
 
-func (c *externalSshClient) wait(stderr io.Reader) {
+func (c *externalSshClient) Close() error {
+	if c.execCmd == nil {
+		return nil
+	}
+	if c.execCmd.Process != nil {
+		err := c.execCmd.Process.Kill()
+		if err != nil {
+			return err
+		}
+	}
+
+	return c.execCmd.Wait()
+}
+
+// separate goroutine
+func (c *externalSshClient) logerr(stderr io.Reader) {
 	reader := bufio.NewReader(stderr)
-	for {
-		line, err := reader.ReadString('\n')
+	var err error
+
+	for err == nil {
+		var line string
+		line, err = reader.ReadString('\n')
 		line = strings.TrimSpace(line)
 
 		if line != "" {
-			log.Warnln("Server Error:", line)
-		}
-
-		if err != nil {
-			break
+			log.Warnln("Server Says:", line)
 		}
 	}
-
-	err := c.execCmd.Wait()
-	if err != nil {
-		log.Fatalln("ssh exited:", err)
-	} else {
-		log.Fatalln("ssh exited")
-	}
-
 }

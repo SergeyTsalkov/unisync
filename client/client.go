@@ -23,12 +23,7 @@ func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
 	n.SetSideC("FSEVENT", "PROGRESS")
 	client := &Client{Node: n}
 
-	err := client.SetBasepath(config.Local)
-	if err != nil {
-		return nil, fmt.Errorf("Unable to set basepath: %w", err)
-	}
-
-	err = client.SetTmpdir(config.Tmpdir)
+	err := client.SetTmpdir(config.Tmpdir)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to set tmpdir: %w", err)
 	}
@@ -53,6 +48,11 @@ func (c *Client) SideChannelReader() {
 }
 
 func (c *Client) Run() error {
+	err := c.SetBasepath(c.Config.Local)
+	if err != nil {
+		return fmt.Errorf("Unable to set basepath: %w", err)
+	}
+
 	go c.SideChannelReader()
 	defer c.Watcher.Stop()
 
