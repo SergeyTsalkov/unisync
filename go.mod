@@ -1,6 +1,6 @@
 module unisync
 
-go 1.19
+go 1.18
 
 require (
 	github.com/rjeczalik/notify v0.9.3-0.20210809113154-3472d85e95cd
