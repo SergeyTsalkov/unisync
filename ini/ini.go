@@ -7,11 +7,17 @@ import (
 	"strings"
 )
 
+var typeMap = map[string]func(string) (reflect.Value, error){}
+
 type Unmarshaler interface {
 	UnmarshalINI([]byte) error
 }
 
 var unmarshalerType = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
+
+func AddTypeMap(key string, fn func(string) (reflect.Value, error)) {
+	typeMap[key] = fn
+}
 
 func Unmarshal(data []byte, ptr any) error {
 	fieldMap, err := makeFieldMap(ptr)
@@ -84,7 +90,10 @@ func setValue(v reflect.Value, str string) error {
 func getValue(str string, typ reflect.Type) (reflect.Value, error) {
 	kind := typ.Kind()
 
-	if kind == reflect.String {
+	if fn, ok := typeMap[typ.String()]; ok {
+		return fn(str)
+
+	} else if kind == reflect.String {
 		return reflect.ValueOf(str), nil
 
 	} else if kind == reflect.Bool {

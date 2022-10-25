@@ -1,11 +1,11 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strconv"
 	"strings"
@@ -41,42 +41,12 @@ type Config struct {
 
 	RemoteUnisyncPath []string `json:"-" ini:"remote_unisync_path"`
 
-	ChmodLocal     FileMode `json:"chmod_local" ini:"chmod_local"`
-	ChmodLocalDir  FileMode `json:"chmod_local_dir" ini:"chmod_local_dir"`
-	ChmodRemote    FileMode `json:"chmod_remote" ini:"chmod_remote"`
-	ChmodRemoteDir FileMode `json:"chmod_remote_dir" ini:"chmod_remote_dir"`
-	ChmodMask      FileMode `json:"chmod_mask" ini:"chmod_mask"`
-	ChmodDirMask   FileMode `json:"chmod_dir_mask" ini:"chmod_dir_mask"`
-}
-
-type FileMode struct {
-	fs.FileMode
-}
-
-func (f *FileMode) UnmarshalJSON(b []byte) error {
-	var str string
-	if err := json.Unmarshal(b, &str); err != nil {
-		return err
-	}
-	i, err := strconv.ParseUint(str, 8, 32)
-	if err != nil {
-		return err
-	}
-	f.FileMode = fs.FileMode(i)
-	return nil
-}
-
-func (f *FileMode) MarshalJSON() ([]byte, error) {
-	return json.Marshal(strconv.FormatUint(uint64(f.Perm()), 8))
-}
-
-func (f *FileMode) UnmarshalINI(b []byte) error {
-	i, err := strconv.ParseUint(string(b), 8, 32)
-	if err != nil {
-		return err
-	}
-	f.FileMode = fs.FileMode(i)
-	return nil
+	ChmodLocal     fs.FileMode `json:"chmod_local" ini:"chmod_local"`
+	ChmodLocalDir  fs.FileMode `json:"chmod_local_dir" ini:"chmod_local_dir"`
+	ChmodRemote    fs.FileMode `json:"chmod_remote" ini:"chmod_remote"`
+	ChmodRemoteDir fs.FileMode `json:"chmod_remote_dir" ini:"chmod_remote_dir"`
+	ChmodMask      fs.FileMode `json:"chmod_mask" ini:"chmod_mask"`
+	ChmodDirMask   fs.FileMode `json:"chmod_dir_mask" ini:"chmod_dir_mask"`
 }
 
 func New() *Config {
@@ -86,15 +56,27 @@ func New() *Config {
 		Prefer:         "newest",
 		Timeout:        300,
 		ConnectTimeout: 30,
-		ChmodLocal:     FileMode{0644},
-		ChmodRemote:    FileMode{0644},
-		ChmodLocalDir:  FileMode{0755},
-		ChmodRemoteDir: FileMode{0755},
-		ChmodMask:      FileMode{0100},
-		ChmodDirMask:   FileMode{0},
+		ChmodLocal:     0644,
+		ChmodRemote:    0644,
+		ChmodLocalDir:  0755,
+		ChmodRemoteDir: 0755,
+		ChmodMask:      0100,
+		ChmodDirMask:   0,
 	}
 
 	return &config
+}
+
+func init() {
+	fn := func(str string) (reflect.Value, error) {
+		i, err := strconv.ParseUint(str, 8, 32)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		return reflect.ValueOf(fs.FileMode(i)), nil
+	}
+
+	ini.AddTypeMap("fs.FileMode", fn)
 }
 
 func Parse(path string) (*Config, error) {

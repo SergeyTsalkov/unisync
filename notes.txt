@@ -12,7 +12,6 @@ example:
 
 
 TODO:
-  - ini should let us set a typeMap to map fs.FileMode to unmarshaling function
   - if we can't find remote path, explain how to install unisync remotely  
   
   - test on Windows, OpenBSD, etc
