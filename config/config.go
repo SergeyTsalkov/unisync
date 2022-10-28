@@ -67,7 +67,7 @@ func New() *Config {
 	return &config
 }
 
-func init() {
+func iniParser() *ini.Parser {
 	fn := func(str string) (reflect.Value, error) {
 		i, err := strconv.ParseUint(str, 8, 32)
 		if err != nil {
@@ -76,7 +76,9 @@ func init() {
 		return reflect.ValueOf(fs.FileMode(i)), nil
 	}
 
-	ini.AddTypeMap("fs.FileMode", fn)
+	parser := ini.New()
+	parser.AddTypeMap("fs.FileMode", fn)
+	return parser
 }
 
 func Parse(path string) (*Config, error) {
@@ -101,7 +103,7 @@ func Parse(path string) (*Config, error) {
 	}
 
 	config := New()
-	err = ini.Unmarshal(bytes, config)
+	err = iniParser().Unmarshal(bytes, config)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse ConfigFile %v: %v", name, err)
 	}

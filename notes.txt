@@ -13,8 +13,6 @@ example:
 
 
 TODO:
-  - ini class should let us create New() IniParser, add a funcMap to that parser, then use it to parse the ini file so that funcMap is not global
-
   - degrade to polling:
     - local_watch= on | poll | off
     - remote_watch= on | poll | off

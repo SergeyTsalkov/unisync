@@ -7,7 +7,11 @@ import (
 	"strings"
 )
 
-var typeMap = map[string]func(string) (reflect.Value, error){}
+type typeMapFn func(string) (reflect.Value, error)
+
+type Parser struct {
+	typeMap map[string]typeMapFn
+}
 
 type Unmarshaler interface {
 	UnmarshalINI([]byte) error
@@ -15,12 +19,18 @@ type Unmarshaler interface {
 
 var unmarshalerType = reflect.TypeOf((*Unmarshaler)(nil)).Elem()
 
-func AddTypeMap(key string, fn func(string) (reflect.Value, error)) {
-	typeMap[key] = fn
+func New() *Parser {
+	return &Parser{
+		typeMap: map[string]typeMapFn{},
+	}
 }
 
-func Unmarshal(data []byte, ptr any) error {
-	fieldMap, err := makeFieldMap(ptr)
+func (p *Parser) AddTypeMap(key string, fn typeMapFn) {
+	p.typeMap[key] = fn
+}
+
+func (p *Parser) Unmarshal(data []byte, ptr any) error {
+	fieldMap, err := p.makeFieldMap(ptr)
 	if err != nil {
 		return err
 	}
@@ -46,7 +56,7 @@ func Unmarshal(data []byte, ptr any) error {
 			return fmt.Errorf("%v <-- invalid setting", line)
 		}
 
-		err = setValue(v, value)
+		err = p.setValue(v, value)
 		if err != nil {
 			return fmt.Errorf("%v <-- %v", line, err)
 		}
@@ -55,7 +65,7 @@ func Unmarshal(data []byte, ptr any) error {
 	return nil
 }
 
-func setValue(v reflect.Value, str string) error {
+func (p *Parser) setValue(v reflect.Value, str string) error {
 	if v.CanConvert(unmarshalerType) {
 		if v.IsNil() {
 			v.Set(reflect.New(v.Type().Elem()))
@@ -69,14 +79,14 @@ func setValue(v reflect.Value, str string) error {
 	}
 
 	if v.Type().Kind() == reflect.Slice {
-		setVal, err := getValue(str, v.Type().Elem())
+		setVal, err := p.getValue(str, v.Type().Elem())
 		if err != nil {
 			return err
 		}
 
 		v.Set(reflect.Append(v, setVal))
 	} else {
-		setVal, err := getValue(str, v.Type())
+		setVal, err := p.getValue(str, v.Type())
 		if err != nil {
 			return err
 		}
@@ -87,10 +97,10 @@ func setValue(v reflect.Value, str string) error {
 	return nil
 }
 
-func getValue(str string, typ reflect.Type) (reflect.Value, error) {
+func (p *Parser) getValue(str string, typ reflect.Type) (reflect.Value, error) {
 	kind := typ.Kind()
 
-	if fn, ok := typeMap[typ.String()]; ok {
+	if fn, ok := p.typeMap[typ.String()]; ok {
 		return fn(str)
 
 	} else if kind == reflect.String {
@@ -122,7 +132,7 @@ func getValue(str string, typ reflect.Type) (reflect.Value, error) {
 	return reflect.Value{}, fmt.Errorf("unknown type %v", typ)
 }
 
-func makeFieldMap(ptr any) (map[string]reflect.Value, error) {
+func (p *Parser) makeFieldMap(ptr any) (map[string]reflect.Value, error) {
 	fieldMap := map[string]reflect.Value{}
 
 	v := reflect.ValueOf(ptr)
