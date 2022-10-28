@@ -13,6 +13,15 @@ example:
 
 
 TODO:
+  - ini class should let us create New() IniParser, add a funcMap to that parser, then use it to parse the ini file so that funcMap is not global
+
+  - degrade to polling:
+    - local_watch= on | poll | off
+    - remote_watch= on | poll | off
+    - poll_freq = 0.25
+    - if we can't start watcher, fallback to polling
+    - if both watchers are off, we do 1-time sync and exit
+
   - if we can't find remote path, explain how to install unisync remotely  
   
   - test on Windows, OpenBSD, etc

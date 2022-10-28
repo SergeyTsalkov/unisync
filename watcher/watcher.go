@@ -29,6 +29,11 @@ func (w *Watcher) Start(basepath string, ignore []string) error {
 	w.ignore = ignore
 	w.basepath = basepath
 
+	// where we use kqueue, reset our open files limit to the maximum
+	// reaching this limit will cause the watcher to fail and force us to
+	// watch for changes by polling instead
+	FixOpenFilesLimit()
+
 	go w.monitor()
 	err := notify.Watch(filepath.Join(basepath, "..."), w.events, events)
 	if err != nil {
