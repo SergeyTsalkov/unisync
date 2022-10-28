@@ -21,23 +21,23 @@ var configDir string
 // json is only used to transmit the needed parts of config to server
 // ini is used to parse the conf file on the client
 type Config struct {
-	Name           string   `json:"name" ini:"name"`
-	Local          string   `json:"-" ini:"local"`
-	Remote         string   `json:"remote" ini:"remote"`
-	User           string   `json:"-" ini:"user"`
-	Host           string   `json:"-" ini:"host"`
-	Port           int      `json:"-" ini:"port"`
-	Method         string   `json:"-" ini:"method"`
-	Prefer         string   `json:"-"' ini:"prefer"`
-	Ignore         []string `json:"ignore" ini:"ignore"`
-	Tmpdir         string   `json:"-" ini:"tmpdir"`
-	RemoteTmpdir   string   `json:"remote_tmpdir" ini:"remote_tmpdir"`
-	SshPath        string   `json:"-" ini:"ssh_path"`
-	SshOpts        string   `json:"-" ini:"ssh_opts"`
-	SshKeys        []string `json:"-" ini:"ssh_key"`
-	Timeout        int      `json:"-" ini:"timeout"`
-	ConnectTimeout int      `json:"-" ini:"connect_timeout"`
-	Debug          bool     `json:"-" ini:"debug"`
+	Name           string        `json:"name" ini:"name"`
+	Local          string        `json:"-" ini:"local"`
+	Remote         string        `json:"remote" ini:"remote"`
+	User           string        `json:"-" ini:"user"`
+	Host           string        `json:"-" ini:"host"`
+	Port           int           `json:"-" ini:"port"`
+	Method         string        `json:"-" ini:"method"`
+	Prefer         string        `json:"-"' ini:"prefer"`
+	Ignore         []string      `json:"ignore" ini:"ignore"`
+	Tmpdir         string        `json:"-" ini:"tmpdir"`
+	RemoteTmpdir   string        `json:"remote_tmpdir" ini:"remote_tmpdir"`
+	SshPath        string        `json:"-" ini:"ssh_path"`
+	SshOpts        string        `json:"-" ini:"ssh_opts"`
+	SshKeys        []string      `json:"-" ini:"ssh_key"`
+	Timeout        time.Duration `json:"-" ini:"timeout"`
+	ConnectTimeout time.Duration `json:"-" ini:"connect_timeout"`
+	Debug          bool          `json:"-" ini:"debug"`
 
 	RemoteUnisyncPath []string `json:"-" ini:"remote_unisync_path"`
 
@@ -54,8 +54,8 @@ func New() *Config {
 		SshPath:        "ssh",
 		SshOpts:        "-e none -o BatchMode=yes -o StrictHostKeyChecking=no",
 		Prefer:         "newest",
-		Timeout:        300,
-		ConnectTimeout: 30,
+		Timeout:        300 * time.Second,
+		ConnectTimeout: 30 * time.Second,
 		ChmodLocal:     0644,
 		ChmodRemote:    0644,
 		ChmodLocalDir:  0755,
@@ -68,7 +68,7 @@ func New() *Config {
 }
 
 func iniParser() *ini.Parser {
-	fn := func(str string) (reflect.Value, error) {
+	parseFileMode := func(str string) (reflect.Value, error) {
 		i, err := strconv.ParseUint(str, 8, 32)
 		if err != nil {
 			return reflect.Value{}, err
@@ -76,8 +76,17 @@ func iniParser() *ini.Parser {
 		return reflect.ValueOf(fs.FileMode(i)), nil
 	}
 
+	parseDuration := func(str string) (reflect.Value, error) {
+		i, err := strconv.Atoi(str)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		return reflect.ValueOf(time.Duration(i) * time.Second), nil
+	}
+
 	parser := ini.New()
-	parser.AddTypeMap("fs.FileMode", fn)
+	parser.AddTypeMap("fs.FileMode", parseFileMode)
+	parser.AddTypeMap("time.Duration", parseDuration)
 	return parser
 }
 
@@ -253,8 +262,4 @@ func mkdirIfMissing(dir string, mode os.FileMode) error {
 		return nil
 	}
 	return os.Mkdir(dir, mode)
-}
-
-func Duration(seconds int) time.Duration {
-	return time.Duration(seconds) * time.Second
 }

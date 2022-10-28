@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 	"unisync/config"
 	"unisync/log"
 	"unisync/pageant"
@@ -51,7 +52,7 @@ func New(conf *config.Config) (*internalSshClient, error) {
 			ssh.PublicKeys(signers...),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         config.Duration(conf.ConnectTimeout),
+		Timeout:         conf.ConnectTimeout,
 	}
 
 	c := &internalSshClient{
@@ -67,10 +68,10 @@ func New(conf *config.Config) (*internalSshClient, error) {
 }
 
 // replacement for ssh.Dial() to give us control over KeepAlive
-func dial(addr string, sshConfig *ssh.ClientConfig, keepAlive int) (*ssh.Client, error) {
+func dial(addr string, sshConfig *ssh.ClientConfig, keepAlive time.Duration) (*ssh.Client, error) {
 	dialer := net.Dialer{
 		Timeout:   sshConfig.Timeout,
-		KeepAlive: config.Duration(keepAlive),
+		KeepAlive: keepAlive,
 	}
 	conn, err := dialer.Dial("tcp", addr)
 	if err != nil {

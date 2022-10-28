@@ -18,8 +18,8 @@ type tlsClient struct {
 func New(conf *config.Config, cert []tls.Certificate, capool *x509.CertPool) *tlsClient {
 	dialer := &tls.Dialer{
 		NetDialer: &net.Dialer{
-			Timeout:   config.Duration(conf.ConnectTimeout),
-			KeepAlive: config.Duration(conf.Timeout),
+			Timeout:   conf.ConnectTimeout,
+			KeepAlive: conf.Timeout,
 		},
 		Config: &tls.Config{
 			ServerName:   "unisync",
