@@ -1,5 +1,6 @@
 
 rsync --archive --delete --exclude='.git' --exclude='unisync' /Users/sergey/unisync/ sergey@ark:unisync
+rsync --archive --delete --exclude='.git' --exclude='unisync' /Users/sergey/unisync/ meekro_meekrodb@ssh.phx.nearlyfreespeech.net:/home/private/unisync
 
 example:
   unisync ~/localpath user@host:remotepath/

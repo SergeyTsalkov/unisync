@@ -15,6 +15,7 @@ type Watcher struct {
 	ignore   []string
 	basepath string
 	mutex    sync.Mutex
+	stopOnce sync.Once
 }
 
 func New() *Watcher {
@@ -31,14 +32,16 @@ func (w *Watcher) Start(basepath string, ignore []string) error {
 	go w.monitor()
 	err := notify.Watch(filepath.Join(basepath, "..."), w.events, events)
 	if err != nil {
-		close(w.events)
+		w.Stop()
 	}
 	return err
 }
 
 func (w *Watcher) Stop() {
-	notify.Stop(w.events)
-	close(w.events)
+	w.stopOnce.Do(func() {
+		notify.Stop(w.events)
+		close(w.events)
+	})
 }
 
 func (w *Watcher) Ready() {
