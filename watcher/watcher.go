@@ -1,52 +1,50 @@
 package watcher
 
 import (
-	"path/filepath"
 	"sync"
+	"time"
 	"unisync/gitignore"
-
-	"github.com/rjeczalik/notify"
 )
+
+type stopFn func()
 
 type Watcher struct {
 	C        chan string
-	events   chan notify.EventInfo
+	PollFreq time.Duration
 	enabled  bool
 	ignore   []string
-	basepath string
 	mutex    sync.Mutex
-	stopOnce sync.Once
+	stop     stopFn
 }
 
 func New() *Watcher {
 	return &Watcher{
-		C:      make(chan string, 1),
-		events: make(chan notify.EventInfo, 100),
+		C:        make(chan string, 1),
+		PollFreq: 250 * time.Millisecond,
 	}
 }
 
-func (w *Watcher) Start(basepath string, ignore []string) error {
+func (w *Watcher) Start(basepath string, ignore []string, poll bool) error {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
 	w.ignore = ignore
-	w.basepath = basepath
 
-	// where we use kqueue, reset our open files limit to the maximum
-	// reaching this limit will cause the watcher to fail and force us to
-	// watch for changes by polling instead
-	FixOpenFilesLimit()
-
-	go w.monitor()
-	err := notify.Watch(filepath.Join(basepath, "..."), w.events, events)
-	if err != nil {
-		w.Stop()
+	if poll {
+		return w.StartPoll(basepath)
 	}
-	return err
+
+	return w.StartNotify(basepath)
 }
 
-func (w *Watcher) Stop() {
-	w.stopOnce.Do(func() {
-		notify.Stop(w.events)
-		close(w.events)
-	})
+func (w *Watcher) Stop() error {
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	if w.stop != nil {
+		w.stop()
+	}
+	return nil
 }
 
 func (w *Watcher) Ready() {
@@ -57,23 +55,15 @@ func (w *Watcher) Ready() {
 	w.enabled = true
 }
 
-// separate goroutine
-func (w *Watcher) monitor() {
-	for event := range w.events {
-		path, _ := filepath.Rel(w.basepath, event.Path())
-		path = filepath.ToSlash(path)
-
-		if !gitignore.MatchAny(w.ignore, path, true) {
-			w.Send(path)
-		}
-	}
-}
-
 func (w *Watcher) Send(path string) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
 	if !w.enabled {
+		return
+	}
+
+	if gitignore.MatchAny(w.ignore, path, true) {
 		return
 	}
 

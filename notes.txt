@@ -13,12 +13,8 @@ example:
 
 
 TODO:
-  - degrade to polling:
-    - local_watch= on | poll | off
-    - remote_watch= on | poll | off
-    - poll_freq = 0.25
-    - if we can't start watcher, fallback to polling
-    - if both watchers are off, we do 1-time sync and exit
+  - when comparing local and remote lists, exclude anything matching ignore (in case walking the filesystem went wrong)
+  - if local and remote watch is off, actually exit client and don't auto-retry
 
   - if we can't find remote path, explain how to install unisync remotely  
   

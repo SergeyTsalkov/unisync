@@ -84,3 +84,19 @@ func (plan *SyncPlan) IsSynced() bool {
 		len(plan.LocalDel) == 0 &&
 		len(plan.RemoteDel) == 0
 }
+
+func (plan *SyncPlan) FilesChanged() []*FileListItem {
+	changed := []*FileListItem{}
+	changed = append(changed, plan.PullFile...)
+	changed = append(changed, plan.PushFile...)
+	changed = append(changed, plan.LocalMkdir...)
+	changed = append(changed, plan.RemoteMkdir...)
+	changed = append(changed, plan.LocalMklink...)
+	changed = append(changed, plan.RemoteMklink...)
+	changed = append(changed, plan.LocalChmod...)
+	changed = append(changed, plan.RemoteChmod...)
+	changed = append(changed, plan.LocalDel...)
+	changed = append(changed, plan.RemoteDel...)
+
+	return changed
+}

@@ -39,6 +39,10 @@ type Config struct {
 	ConnectTimeout time.Duration `json:"-" ini:"connect_timeout"`
 	Debug          bool          `json:"-" ini:"debug"`
 
+	WatchLocal  string        `json:"-" ini:"watch_local"`
+	WatchRemote string        `json:"watch_remote" ini:"watch_remote"`
+	PollFreq    time.Duration `json:"poll_freq" ini:"poll_freq"`
+
 	RemoteUnisyncPath []string `json:"-" ini:"remote_unisync_path"`
 
 	ChmodLocal     fs.FileMode `json:"chmod_local" ini:"chmod_local"`
@@ -54,6 +58,9 @@ func New() *Config {
 		SshPath:        "ssh",
 		SshOpts:        "-e none -o BatchMode=yes -o StrictHostKeyChecking=no",
 		Prefer:         "newest",
+		WatchLocal:     "1",
+		WatchRemote:    "1",
+		PollFreq:       250 * time.Millisecond,
 		Timeout:        300 * time.Second,
 		ConnectTimeout: 30 * time.Second,
 		ChmodLocal:     0644,
@@ -77,16 +84,25 @@ func iniParser() *ini.Parser {
 	}
 
 	parseDuration := func(str string) (reflect.Value, error) {
-		i, err := strconv.Atoi(str)
+		i, err := strconv.ParseFloat(str, 64)
 		if err != nil {
 			return reflect.Value{}, err
 		}
-		return reflect.ValueOf(time.Duration(i) * time.Second), nil
+		return reflect.ValueOf(time.Duration(i * float64(time.Second))), nil
+	}
+
+	parseIniBool := func(str string) (reflect.Value, error) {
+		b, err := parseBool(str)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		return reflect.ValueOf(b), nil
 	}
 
 	parser := ini.New()
 	parser.AddTypeMap("fs.FileMode", parseFileMode)
 	parser.AddTypeMap("time.Duration", parseDuration)
+	parser.AddTypeMap("bool", parseIniBool)
 	return parser
 }
 
@@ -127,6 +143,7 @@ func Parse(path string) (*Config, error) {
 }
 
 func (c *Config) Validate() error {
+	var err error
 	setting_missing_error := "setting %v is required (and missing)"
 
 	if c.Local == "" {
@@ -179,6 +196,12 @@ func (c *Config) Validate() error {
 				c.SshKeys = append(c.SshKeys, option)
 			}
 		}
+	}
+	if c.WatchLocal, err = validateExtendedBool(c.WatchLocal, "poll"); err != nil {
+		return fmt.Errorf("local_watch=%v <-- %v", c.WatchLocal, err)
+	}
+	if c.WatchRemote, err = validateExtendedBool(c.WatchRemote, "poll"); err != nil {
+		return fmt.Errorf("remote_watch=%v <-- %v", c.WatchRemote, err)
 	}
 
 	if len(c.RemoteUnisyncPath) == 0 {
@@ -262,4 +285,33 @@ func mkdirIfMissing(dir string, mode os.FileMode) error {
 		return nil
 	}
 	return os.Mkdir(dir, mode)
+}
+
+func parseBool(str string) (bool, error) {
+	str = strings.ToLower(str)
+	switch str {
+	case "1", "t", "true", "yes", "on":
+		return true, nil
+	case "0", "f", "false", "no", "off":
+		return false, nil
+	}
+
+	return false, fmt.Errorf("unable to parse bool")
+}
+
+func validateExtendedBool(str string, opts ...string) (string, error) {
+	if b, err := parseBool(str); err == nil {
+		if b {
+			return "1", nil
+		}
+		return "0", nil
+	}
+
+	for _, opt := range opts {
+		if str == opt {
+			return opt, nil
+		}
+	}
+
+	return str, fmt.Errorf("unable to parse value")
 }

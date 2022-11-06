@@ -2,33 +2,35 @@ package filelist
 
 import (
 	"io/fs"
-	"unisync/config"
 )
 
 type SyncPlanBuilder struct {
-	Config *config.Config
-	Plan   *SyncPlan
+	prefer   string
+	fileMask fs.FileMode
+	dirMask  fs.FileMode
 }
 
-func NewSyncPlanBuilder(config *config.Config) *SyncPlanBuilder {
-	return &SyncPlanBuilder{Config: config}
+func NewSyncPlanBuilder(prefer string, fileMask, dirMask fs.FileMode) *SyncPlanBuilder {
+	return &SyncPlanBuilder{
+		prefer:   prefer,
+		fileMask: fileMask,
+		dirMask:  dirMask,
+	}
 }
 
 func (b *SyncPlanBuilder) BuildSyncPlan(localList, remoteList, cacheList FileList) *SyncPlan {
-	b.Plan = NewSyncPlan()
+	plan := NewSyncPlan()
 	index := indexFileList(localList, remoteList, cacheList)
 
 	for _, lists := range index {
-		b.compare(lists.local, lists.remote, lists.cache)
+		b.compare(plan, lists.local, lists.remote, lists.cache)
 	}
 
-	b.Plan.Clean()
-	return b.Plan
+	plan.Clean()
+	return plan
 }
 
-func (b *SyncPlanBuilder) compare(local, remote, cache *FileListItem) {
-	plan := b.Plan
-
+func (b *SyncPlanBuilder) compare(plan *SyncPlan, local, remote, cache *FileListItem) {
 	if local == nil && remote == nil {
 		// if local and remote don't exist, the file was deleted on both sides and is only known from the cache
 		// in this case, there's nothing to sync
@@ -108,7 +110,7 @@ func (b *SyncPlanBuilder) preferLocal(local, remote *FileListItem) bool {
 		return true
 	}
 
-	switch b.Config.Prefer {
+	switch b.prefer {
 	case "newest":
 		return local.ModifiedAt >= remote.ModifiedAt
 	case "oldest":
@@ -118,7 +120,7 @@ func (b *SyncPlanBuilder) preferLocal(local, remote *FileListItem) bool {
 	case "remote":
 		return false
 	default:
-		panic("config.prefer must be one of: newest, oldest, local, remote")
+		panic("prefer must be one of: newest, oldest, local, remote")
 	}
 
 	return true
@@ -144,9 +146,9 @@ func (b *SyncPlanBuilder) itemModesMatch(local, remote *FileListItem) bool {
 
 	var mask fs.FileMode
 	if local.IsDir {
-		mask = b.Config.ChmodDirMask.Perm()
+		mask = b.dirMask.Perm()
 	} else {
-		mask = b.Config.ChmodMask.Perm()
+		mask = b.fileMask.Perm()
 	}
 
 	localMode = localMode & mask

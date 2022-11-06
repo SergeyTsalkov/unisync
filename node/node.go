@@ -114,9 +114,24 @@ func (n *Node) SetBasepath(basepath string) error {
 		return fmt.Errorf("%v is not a directory", basepath)
 	}
 
-	err = n.Watcher.Start(basepath, n.Config.Ignore)
-	if err != nil {
-		return err
+	var watch string
+	if n.IsServer {
+		watch = n.Config.WatchRemote
+	} else {
+		watch = n.Config.WatchLocal
+	}
+
+	n.Watcher.PollFreq = n.Config.PollFreq
+	if watch == "1" {
+		err = n.Watcher.Start(basepath, n.Config.Ignore, false)
+		if err != nil {
+			return fmt.Errorf("Unable to start filesystem monitoring: %w", err)
+		}
+	} else if watch == "poll" {
+		err = n.Watcher.Start(basepath, n.Config.Ignore, true)
+		if err != nil {
+			return fmt.Errorf("Unable to start filesystem monitoring: %w", err)
+		}
 	}
 
 	n.basepath = basepath

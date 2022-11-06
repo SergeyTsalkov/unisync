@@ -54,7 +54,7 @@ func (c *Client) MakeSyncPlan() (*filelist.SyncPlan, filelist.FileList, error) {
 		return nil, nil, err
 	}
 
-	b := filelist.NewSyncPlanBuilder(c.Config)
+	b := filelist.NewSyncPlanBuilder(c.Config.Prefer, c.Config.ChmodMask, c.Config.ChmodDirMask)
 	syncplan := b.BuildSyncPlan(localList, remoteList, cacheList)
 	return syncplan, localList, nil
 }

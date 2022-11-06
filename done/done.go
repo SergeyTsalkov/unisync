@@ -2,7 +2,11 @@ package done
 
 import "sync"
 
-func New() (func(error), func() error, func() chan error) {
+type SetDoneFn func(error)
+type IsDoneFn func() error
+type DoneCFn func() chan error
+
+func New() (SetDoneFn, IsDoneFn, DoneCFn) {
 	lock := &sync.Mutex{}
 	var done error
 	chans := []chan error{}

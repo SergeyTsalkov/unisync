@@ -63,6 +63,11 @@ func (c *Client) Run() error {
 		return err
 	}
 
+	if c.Config.WatchLocal == "0" && c.Config.WatchRemote == "0" {
+		log.Printf("%v %v", "[X]", "Synced. All done..")
+		return nil
+	}
+
 	for {
 		log.Printf("%v %v", "[X]", "Synced. Watching for changes..")
 
