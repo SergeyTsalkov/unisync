@@ -16,6 +16,7 @@ TODO:
   - since windows doesn't support symlinks, find a workaround (test with bestmc repo)
     - symlink=on/off/follow -- on by default, off will skip symlinks
     - give instructions for turning on symlinks in Windows: https://superuser.com/questions/994093/give-an-application-symlink-permissions-within-a-directory-in-windows
+  - don't use /tmp as tempdir by default, might be on wrong partition
   - when comparing local and remote lists, exclude anything matching ignore (in case walking the filesystem went wrong)
   - if local and remote watch is off, actually exit client and don't auto-retry
 
