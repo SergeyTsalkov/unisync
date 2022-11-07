@@ -13,6 +13,7 @@ example:
 
 
 TODO:
+  - since windows doesn't support symlinks, find a workaround (test with bestmc repo); maybe skip symlink or follow it?
   - when comparing local and remote lists, exclude anything matching ignore (in case walking the filesystem went wrong)
   - if local and remote watch is off, actually exit client and don't auto-retry
 
