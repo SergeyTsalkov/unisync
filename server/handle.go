@@ -49,7 +49,7 @@ func (s *Server) handleHELLO(cmd commands.Command) error {
 		return fmt.Errorf("Unable to set basepath: %w", err)
 	}
 
-	err = s.SetTmpdir(s.Config.RemoteTmpdir)
+	err = s.SetTmpdir(s.Config.TmpdirRemote)
 	if err != nil {
 		return fmt.Errorf("Unable to set tmpdir: %w", err)
 	}

@@ -30,14 +30,15 @@ type Config struct {
 	Method         string        `json:"-" ini:"method"`
 	Prefer         string        `json:"-"' ini:"prefer"`
 	Ignore         []string      `json:"ignore" ini:"ignore"`
-	Tmpdir         string        `json:"-" ini:"tmpdir"`
-	RemoteTmpdir   string        `json:"remote_tmpdir" ini:"remote_tmpdir"`
 	SshPath        string        `json:"-" ini:"ssh_path"`
 	SshOpts        string        `json:"-" ini:"ssh_opts"`
 	SshKeys        []string      `json:"-" ini:"ssh_key"`
 	Timeout        time.Duration `json:"-" ini:"timeout"`
 	ConnectTimeout time.Duration `json:"-" ini:"connect_timeout"`
 	Debug          bool          `json:"-" ini:"debug"`
+
+	TmpdirLocal  string `json:"-" ini:"tmpdir_local"`
+	TmpdirRemote string `json:"tmpdir_remote" ini:"tmpdir_remote"`
 
 	WatchLocal  string        `json:"-" ini:"watch_local"`
 	WatchRemote string        `json:"watch_remote" ini:"watch_remote"`

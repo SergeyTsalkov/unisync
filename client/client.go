@@ -23,7 +23,7 @@ func New(in io.Reader, out io.Writer, config *config.Config) (*Client, error) {
 	n.SetSideC("FSEVENT", "PROGRESS")
 	client := &Client{Node: n}
 
-	err := client.SetTmpdir(config.Tmpdir)
+	err := client.SetTmpdir(config.TmpdirLocal)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to set tmpdir: %w", err)
 	}
