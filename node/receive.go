@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 	"unisync/commands"
-	"unisync/copy"
 	"unisync/progresswriter"
 )
 
@@ -24,10 +23,13 @@ func (n *Node) ReceiveFile(push *commands.Push, waiter *sync.WaitGroup) error {
 	defer os.Remove(tempfullpath)
 
 	for {
-		if push.BodyLen() > 0 {
-			_, err := copy.CopyNbuffer(file, n.In, int64(push.BodyLen()), n.Buffer)
+		if bodyLen := int64(push.BodyLen()); bodyLen > 0 {
+			bytesCopied, err := io.CopyBuffer(file, io.LimitReader(n.In, bodyLen), n.Buffer)
 			if err != nil {
 				return err
+			}
+			if bytesCopied != bodyLen {
+				return fmt.Errorf("size mismatch: %v (expected %v bytes in this chunk but got %v)", path, bodyLen, bytesCopied)
 			}
 			waiter.Done()
 		}
