@@ -1,0 +1,38 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  publish:
+    name: Publish for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: unisync
+            asset_name: unisync-linux-amd64
+          - os: windows-latest
+            artifact_name: unisync.exe
+            asset_name: unisync-windows-amd64.exe
+          - os: macos-latest
+            artifact_name: unisync
+            asset_name: unisync-macos-amd64
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-go@v3
+      with:
+        go-version: '^1.19.3'
+        check-latest: true
+    - run: go build
+
+    - uses: svenstaro/upload-release-action@v2
+      with:
+        file: ${{ matrix.artifact_name }}
+        asset_name: ${{ matrix.asset_name }}
+        tag: ${{ github.ref }}
+        overwrite: true
