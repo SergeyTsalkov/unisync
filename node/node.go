@@ -72,24 +72,15 @@ func New(in io.Reader, out io.Writer) *Node {
 }
 
 func (n *Node) SetTmpdir(tmpdir string) error {
-	if n.tmpdir != "" {
-		return fmt.Errorf("tmpdir is already set")
-	}
-	if tmpdir == "" {
-		if ostmpdir := os.TempDir(); ostmpdir == "" || !config.IsDir(ostmpdir) {
-			return fmt.Errorf("$TMPDIR (%v) doesn't exist", ostmpdir)
+	if tmpdir != "" {
+		var err error
+		tmpdir, err = config.ResolvePath(tmpdir)
+		if err != nil {
+			return err
 		}
-
-		return nil
-	}
-
-	var err error
-	tmpdir, err = config.ResolvePath(tmpdir)
-	if err != nil {
-		return err
-	}
-	if !config.IsDir(tmpdir) {
-		return fmt.Errorf("%v is not a directory", tmpdir)
+		if !config.IsDir(tmpdir) {
+			return fmt.Errorf("%v is not a directory", tmpdir)
+		}
 	}
 
 	n.tmpdir = tmpdir
