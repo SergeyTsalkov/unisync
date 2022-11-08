@@ -13,12 +13,21 @@ import (
 )
 
 func runClient(conf *config.Config) {
+	// auto-retry only if our first try managed to fully connect and sync
 	retryTime := 5 * time.Second
+	everConnected := false
 
 	for {
-		err := _runClient(conf)
+		connected, err := _runClient(conf)
+		if connected {
+			everConnected = true
+		}
+
 		if err != nil {
 			log.Warnln("Client disconnected:", err)
+		}
+		if err == nil || !everConnected {
+			return
 		}
 
 		log.Printf("Retrying in %v..", retryTime)
@@ -26,7 +35,7 @@ func runClient(conf *config.Config) {
 	}
 }
 
-func _runClient(conf *config.Config) error {
+func _runClient(conf *config.Config) (bool, error) {
 	var in io.Reader
 	var out io.Writer
 	var err error
@@ -36,13 +45,13 @@ func _runClient(conf *config.Config) error {
 	if conf.Method == "internalssh" {
 		sshclient, err := internalssh.New(conf)
 		if err != nil {
-			return err
+			return false, err
 		}
 		defer sshclient.Close()
 
 		out, in, err = sshclient.Run()
 		if err != nil {
-			return fmt.Errorf("ssh error: %v", err)
+			return false, fmt.Errorf("ssh error: %v", err)
 		}
 
 	} else if conf.Method == "ssh" {
@@ -56,21 +65,21 @@ func _runClient(conf *config.Config) error {
 		}()
 		out, in, err = sshclient.Run()
 		if err != nil {
-			return fmt.Errorf("ssh error: %v", err)
+			return false, fmt.Errorf("ssh error: %v", err)
 		}
 
 	} else if conf.Method == "directtls" {
 
 		cert, capool, err := getCert(false)
 		if err != nil {
-			return err
+			return false, err
 		}
 		tlsc := tlsclient.New(conf, cert, capool)
 		defer tlsc.Close()
 
 		out, in, err = tlsc.Run()
 		if err != nil {
-			return err
+			return false, err
 		}
 
 	} else {
@@ -79,7 +88,7 @@ func _runClient(conf *config.Config) error {
 
 	c, err := client.New(in, out, conf)
 	if err != nil {
-		return err
+		return false, err
 	}
 	return c.Run()
 }

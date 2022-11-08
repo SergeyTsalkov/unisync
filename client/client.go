@@ -47,25 +47,25 @@ func (c *Client) SideChannelReader() {
 	}
 }
 
-func (c *Client) Run() error {
+func (c *Client) Run() (bool, error) {
 	err := c.SetBasepath(c.Config.Local)
 	if err != nil {
-		return fmt.Errorf("Unable to set basepath: %w", err)
+		return false, fmt.Errorf("Unable to set basepath: %w", err)
 	}
 
 	go c.SideChannelReader()
 	defer c.Watcher.Stop()
 
 	if err := c.RunHello(); err != nil {
-		return err
+		return false, err
 	}
 	if err := c.Sync(); err != nil {
-		return err
+		return false, err
 	}
 
 	if c.Config.WatchLocal == "0" && c.Config.WatchRemote == "0" {
 		log.Printf("%v %v", "[X]", "Synced. All done..")
-		return nil
+		return true, nil
 	}
 
 	for {
@@ -74,14 +74,14 @@ func (c *Client) Run() error {
 		select {
 		case <-c.Watcher.C:
 			if err := c.Sync(); err != nil {
-				return err
+				return true, err
 			}
 		case err := <-c.DoneC():
-			return err
+			return true, err
 		}
 	}
 
-	return nil
+	return true, fmt.Errorf("unexpected exit")
 }
 
 func (c *Client) RunHello() error {
