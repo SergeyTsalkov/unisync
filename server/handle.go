@@ -68,7 +68,7 @@ func (s *Server) handleREQLIST(cmd commands.Command) error {
 	s.Watcher.Ready()
 
 	reqlist := cmd.(*commands.ReqList)
-	list, err := filelist.Make(s.Path(reqlist.Path), s.Config.Ignore)
+	list, err := filelist.Make(s.Path(reqlist.Path), s.Config.Ignore, s.Config.Symlinks)
 	if err != nil {
 		return err
 	}

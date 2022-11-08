@@ -31,7 +31,7 @@ func (w *Watcher) pollMonitor(basepath string, IsDone done.IsDoneFn) {
 		}
 
 		var newlist filelist.FileList
-		newlist, err = filelist.Make(basepath, w.ignore)
+		newlist, err = filelist.Make(basepath, w.ignore, true)
 		if err != nil {
 			break
 		}

@@ -35,6 +35,7 @@ type Config struct {
 	SshKeys        []string      `json:"-" ini:"ssh_key"`
 	Timeout        time.Duration `json:"-" ini:"timeout"`
 	ConnectTimeout time.Duration `json:"-" ini:"connect_timeout"`
+	Symlinks       bool          `json:"symlinks" ini:"symlinks"`
 	Debug          bool          `json:"-" ini:"debug"`
 
 	TmpdirLocal  string `json:"-" ini:"tmpdir_local"`
@@ -70,6 +71,14 @@ func New() *Config {
 		ChmodRemoteDir: 0755,
 		ChmodMask:      0100,
 		ChmodDirMask:   0,
+	}
+
+	if runtime.GOOS == "windows" {
+		config.Method = "internalssh"
+		config.Symlinks = false
+	} else {
+		config.Method = "ssh"
+		config.Symlinks = true
 	}
 
 	return &config
@@ -154,13 +163,6 @@ func (c *Config) Validate() error {
 		return fmt.Errorf(setting_missing_error, "remote")
 	}
 
-	if c.Method == "" {
-		if runtime.GOOS == "windows" {
-			c.Method = "internalssh"
-		} else {
-			c.Method = "ssh"
-		}
-	}
 	if err := validateInArray("prefer", c.Prefer, []string{"newest", "oldest", "local", "remote"}); err != nil {
 		return err
 	}

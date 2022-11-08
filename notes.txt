@@ -13,9 +13,7 @@ example:
 
 
 TODO:
-  - since windows doesn't support symlinks, find a workaround (test with bestmc repo)
-    - symlink=on/off/follow -- on by default, off will skip symlinks
-    - give instructions for turning on symlinks in Windows: 
+  - give instructions for turning on symlinks in Windows: 
     https://superuser.com/questions/994093/give-an-application-symlink-permissions-within-a-directory-in-windows
   - if we can't find remote path, explain how to install unisync remotely
   - use start/stop/stopall/status/log to manage background workers

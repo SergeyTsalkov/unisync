@@ -20,7 +20,7 @@ type FileListItem struct {
 
 type FileList []*FileListItem
 
-func Make(basepath string, ignore []string) (FileList, error) {
+func Make(basepath string, ignore []string, symlinks bool) (FileList, error) {
 	list := FileList{}
 	basepath = filepath.Clean(basepath)
 
@@ -51,6 +51,10 @@ func Make(basepath string, ignore []string) (FileList, error) {
 			item.IsDir = true
 
 		} else if mode&fs.ModeSymlink != 0 {
+			if !symlinks {
+				return nil
+			}
+
 			link, err := os.Readlink(path)
 			if err != nil {
 				return err
