@@ -41,11 +41,15 @@ func main() {
 			showHelp()
 		}
 
-		conf = config.New()
+		conf = config.New("")
 		conf.Local = args[0]
 		conf.Remote = remotepath
 		conf.User = user
 		conf.Host = host
+		err := conf.Validate()
+		if err != nil {
+			log.Fatalln(err)
+		}
 	}
 
 	if *stdServerFlag {
@@ -64,6 +68,13 @@ func main() {
 		if conf == nil {
 			showHelp()
 		}
+		if conf.Log != "" {
+			err := log.AddFile(conf.Log, log.Notice, "2006-01-02 15:04:05")
+			if err != nil {
+				log.Fatalf("Unable to open file for logging: %v", err)
+			}
+		}
+
 		if *debugFlag {
 			conf.Debug = true
 		}

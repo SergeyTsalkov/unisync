@@ -16,7 +16,32 @@ TODO:
   - give instructions for turning on symlinks in Windows: 
     https://superuser.com/questions/994093/give-an-application-symlink-permissions-within-a-directory-in-windows
   - if we can't find remote path, explain how to install unisync remotely
-  - use start/stop/stopall/status/log to manage background workers
+
+  - manage background workers
+    err := passthru("::DETACH::", "command", "arg1", "arg2")
+    attach commands's stdout/stderr until we see ::DETACH::, then detach it and return nil
+    if command exits before sending that string, return error (even if command exited with code 0)
+
+
+
+    unisync -start myhost.json (run in background)
+    runs "unisync -bg myhost.json", attaches stdout/stderr and writes them to screen
+    when bg process sends ::DETACH::, we don't print that but send it to the background and exit the foreground process
+
+    myhost.json.status -> {pid: 12345}
+    myhost.json.log
+
+    unisync -stop myhost.json
+    find process by .status pid, kill it
+
+    unisync -status, -stopall
+    find all .status pids, see which ones are running
+
+    unisync -log myhost.json (can omit config if only one is running)
+    run tail -f in passthru mode
+
+
+
 
 
 

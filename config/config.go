@@ -35,6 +35,7 @@ type Config struct {
 	SshKeys        []string      `json:"-" ini:"ssh_key"`
 	Timeout        time.Duration `json:"-" ini:"timeout"`
 	ConnectTimeout time.Duration `json:"-" ini:"connect_timeout"`
+	Log            string        `json:"-" ini:"log"`
 	Symlinks       bool          `json:"symlinks" ini:"symlinks"`
 	Debug          bool          `json:"-" ini:"debug"`
 
@@ -55,8 +56,9 @@ type Config struct {
 	ChmodDirMask   fs.FileMode `json:"chmod_dir_mask" ini:"chmod_dir_mask"`
 }
 
-func New() *Config {
+func New(name string) *Config {
 	config := Config{
+		Name:           name,
 		SshPath:        "ssh",
 		SshOpts:        "-e none -o BatchMode=yes -o StrictHostKeyChecking=no",
 		Prefer:         "newest",
@@ -71,6 +73,10 @@ func New() *Config {
 		ChmodRemoteDir: 0755,
 		ChmodMask:      0100,
 		ChmodDirMask:   0,
+	}
+
+	if name != "" {
+		config.Log = name + ".log"
 	}
 
 	if runtime.GOOS == "windows" {
@@ -137,7 +143,7 @@ func Parse(path string) (*Config, error) {
 		return nil, fmt.Errorf("Unable to read ConfigFile %v: %v", name, err)
 	}
 
-	config := New()
+	config := New(name)
 	err = iniParser().Unmarshal(bytes, config)
 	if err != nil {
 		return nil, fmt.Errorf("Unable to parse ConfigFile %v: %v", name, err)
@@ -148,7 +154,6 @@ func Parse(path string) (*Config, error) {
 		return nil, fmt.Errorf("Problem in ConfigFile %v: %v", name, err)
 	}
 
-	config.Name = name
 	return config, nil
 }
 
@@ -205,6 +210,10 @@ func (c *Config) Validate() error {
 	}
 	if c.WatchRemote, err = validateExtendedBool(c.WatchRemote, "poll"); err != nil {
 		return fmt.Errorf("remote_watch=%v <-- %v", c.WatchRemote, err)
+	}
+
+	if c.Log != "" && !filepath.IsAbs(c.Log) {
+		c.Log = filepath.Join(ConfigDir(), c.Log)
 	}
 
 	if len(c.RemoteUnisyncPath) == 0 {

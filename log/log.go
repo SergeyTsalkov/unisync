@@ -63,6 +63,15 @@ func Add(w io.Writer, level uint8, ts string) {
 	Outputs = append(Outputs, &Output{w, level, ts})
 }
 
+func AddFile(fullpath string, level uint8, ts string) error {
+	file, err := os.OpenFile(fullpath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	Add(file, level, ts)
+	return nil
+}
+
 func Reset() {
 	Outputs = []*Output{}
 }
