@@ -27,36 +27,27 @@ var ScreenTimestmap = ""
 
 var Outputs = []*Output{}
 
-func writeTo(w io.Writer, ts, str string) error {
-	var err error
+func writeTo(w io.Writer, ts, str string) {
 	str = strings.TrimSpace(str)
 
 	if ts != "" {
 		ts = time.Now().Format(ts)
-		_, err = io.WriteString(w, ts+" "+str+"\n")
+		io.WriteString(w, ts+" "+str+"\n")
 	} else {
-		_, err = io.WriteString(w, str+"\n")
+		io.WriteString(w, str+"\n")
 	}
-	return err
 }
 
-func write(level uint8, str string) error {
+func write(level uint8, str string) {
 	if ScreenOutput != nil && level >= ScreenLevel {
-		err := writeTo(ScreenOutput, ScreenTimestmap, str)
-		if err != nil {
-			return err
-		}
+		writeTo(ScreenOutput, ScreenTimestmap, str)
 	}
 
 	for _, output := range Outputs {
 		if level >= output.Level {
-			err := writeTo(output.Writer, output.Timestamp, str)
-			if err != nil {
-				return err
-			}
+			writeTo(output.Writer, output.Timestamp, str)
 		}
 	}
-	return nil
 }
 
 func Add(w io.Writer, level uint8, ts string) {
@@ -86,28 +77,28 @@ func Reset() {
 // 	return 0, false
 // }
 
-func Debugln(a ...any) error {
-	return write(Debug, fmt.Sprintln(a...))
+func Debugln(a ...any) {
+	write(Debug, fmt.Sprintln(a...))
 }
-func Println(a ...any) error {
-	return write(Notice, fmt.Sprintln(a...))
+func Println(a ...any) {
+	write(Notice, fmt.Sprintln(a...))
 }
-func Warnln(a ...any) error {
-	return write(Warn, fmt.Sprintln(a...))
+func Warnln(a ...any) {
+	write(Warn, fmt.Sprintln(a...))
 }
 func Fatalln(a ...any) {
 	write(Fatal, fmt.Sprintln(a...))
 	os.Exit(1)
 }
 
-func Debugf(format string, a ...any) error {
-	return write(Debug, fmt.Sprintf(format, a...))
+func Debugf(format string, a ...any) {
+	write(Debug, fmt.Sprintf(format, a...))
 }
-func Printf(format string, a ...any) error {
-	return write(Notice, fmt.Sprintf(format, a...))
+func Printf(format string, a ...any) {
+	write(Notice, fmt.Sprintf(format, a...))
 }
-func Warnf(format string, a ...any) error {
-	return write(Warn, fmt.Sprintf(format, a...))
+func Warnf(format string, a ...any) {
+	write(Warn, fmt.Sprintf(format, a...))
 }
 func Fatalf(format string, a ...any) {
 	write(Fatal, fmt.Sprintf(format, a...))

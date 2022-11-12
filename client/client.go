@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 	"io"
+	"os"
 	"unisync/commands"
 	"unisync/config"
 	"unisync/filelist"
@@ -13,6 +14,7 @@ import (
 
 type Client struct {
 	*node.Node
+	Background     bool
 	cache          filelist.FileList
 	remoteBasepath string
 }
@@ -66,6 +68,16 @@ func (c *Client) Run() (bool, error) {
 	if c.Config.WatchLocal == "0" && c.Config.WatchRemote == "0" {
 		log.Printf("%v %v", "[X]", "Synced. All done..")
 		return true, nil
+	}
+
+	// this will let the -start runner know to detach and let us run in the background
+	// if we don't close stdout, Unix produces SIGPIPE when we next try to write to it
+	// unfortunately os.Stderr can't be closed because of a potential issue in go (see go "os" docs)
+	// but that's okay because we'll never use os.Stderr
+	if c.Background {
+		log.Printf("%v %v", "[X]", "Synced. Will run in background..")
+		log.ScreenOutput = nil
+		os.Stdout.Close()
 	}
 
 	for {

@@ -7,8 +7,10 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
+	"unisync/background"
 	"unisync/config"
 	"unisync/log"
 	"unisync/minica"
@@ -17,6 +19,7 @@ import (
 var mca *minica.MiniCA
 
 func main() {
+	startFlag := flag.Bool("start", false, "start in background mode")
 	debugFlag := flag.Bool("debug", false, "debug mode")
 	stdServerFlag := flag.Bool("stdserver", false, "run server that uses stdin/stdout (internal use only)")
 	serverFlag := flag.String("server", "", "run server")
@@ -64,15 +67,16 @@ func main() {
 			log.Fatalln(err)
 		}
 
+	} else if *startFlag && !background.IsChild() {
+		err := background.StartChild()
+		if err != nil {
+			log.Fatalln(err)
+		}
+		os.Exit(0)
+
 	} else {
 		if conf == nil {
 			showHelp()
-		}
-		if conf.Log != "" {
-			err := log.AddFile(conf.Log, log.Notice, "2006-01-02 15:04:05")
-			if err != nil {
-				log.Fatalf("Unable to open file for logging: %v", err)
-			}
 		}
 
 		if *debugFlag {
@@ -80,6 +84,12 @@ func main() {
 		}
 		if conf.Debug {
 			log.ScreenLevel = log.Debug
+		}
+		if conf.Log != "" {
+			err := log.AddFile(conf.Log, log.ScreenLevel, "2006-01-02 15:04:05")
+			if err != nil {
+				log.Fatalf("Unable to open file for logging: %v", err)
+			}
 		}
 
 		runClient(conf)

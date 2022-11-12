@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"time"
+	"unisync/background"
 	"unisync/client"
 	"unisync/config"
 	"unisync/log"
@@ -90,5 +91,6 @@ func _runClient(conf *config.Config) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	c.Background = background.IsChild()
 	return c.Run()
 }
