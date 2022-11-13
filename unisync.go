@@ -20,6 +20,7 @@ var mca *minica.MiniCA
 
 func main() {
 	startFlag := flag.Bool("start", false, "start in background mode")
+	stopFlag := flag.Bool("stop", false, "stop in background mode")
 	debugFlag := flag.Bool("debug", false, "debug mode")
 	stdServerFlag := flag.Bool("stdserver", false, "run server that uses stdin/stdout (internal use only)")
 	serverFlag := flag.String("server", "", "run server")
@@ -55,6 +56,13 @@ func main() {
 		}
 	}
 
+	if conf != nil && conf.Name != "" && background.IsChild() {
+		err := background.WritePid(conf.Name)
+		if err != nil {
+			log.Warnln("Error writing pid file:", err)
+		}
+	}
+
 	if *stdServerFlag {
 		err := runStdinServer()
 		if err != nil {
@@ -67,8 +75,15 @@ func main() {
 			log.Fatalln(err)
 		}
 
-	} else if *startFlag && !background.IsChild() {
-		err := background.StartChild()
+	} else if *startFlag && conf.Name != "" && !background.IsChild() {
+		err := background.Start(conf.Name)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		os.Exit(0)
+
+	} else if *stopFlag && conf.Name != "" && !background.IsChild() {
+		err := background.Stop(conf.Name)
 		if err != nil {
 			log.Fatalln(err)
 		}

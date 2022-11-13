@@ -1,27 +1,137 @@
 package background
 
 import (
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"unisync/config"
+
+	"github.com/shirou/gopsutil/v3/process"
 )
 
-var childKey = "__UNISYNC_CHILD"
+var childEnv = "__UNISYNC_CHILD"
 
-func IsChild() bool {
-	return os.Getenv(childKey) != ""
+func pidFileName(name string) string {
+	return filepath.Join(config.ConfigDir(), name+".pid")
 }
 
-func StartChild() error {
+func IsChild() bool {
+	return os.Getenv(childEnv) != ""
+}
+
+func WritePid(name string) error {
+	if name == "" {
+		panic("WritePid(name) -- name can't be blank")
+	}
+	if !IsChild() {
+		panic("WritePid(name) -- should only be used with a child process")
+	}
+
+	return os.WriteFile(pidFileName(name), []byte(strconv.Itoa(os.Getpid())), 0644)
+}
+
+func proc(name string) (*process.Process, error) {
+	bytes, err := os.ReadFile(pidFileName(name))
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			err = nil
+		}
+		return nil, err
+	}
+	str := strings.TrimSpace(string(bytes))
+	pid, err := strconv.Atoi(str)
+	if err != nil || pid <= 0 {
+		return nil, nil
+	}
+
+	proc, err := process.NewProcess(int32(pid))
+
+	if err == process.ErrorProcessNotRunning {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return proc, nil
+}
+
+func IsRunning(name string) (bool, error) {
+	proc, err := proc(name)
+	if err != nil || proc == nil {
+		return false, err
+	}
+
+	isRunning, err := proc.IsRunning()
+	if err != nil || !isRunning {
+		return false, err
+	}
+
+	procExe, err := proc.Exe()
+	if err != nil {
+		return false, err
+	}
+	thisExe, err := os.Executable()
+	if err != nil {
+		return false, err
+	}
+
+	_, thisExe = filepath.Split(thisExe)
+	_, procExe = filepath.Split(procExe)
+	return procExe == thisExe, nil
+}
+
+func Stop(name string) error {
+	isRunning, err := IsRunning(name)
+	if err != nil {
+		return fmt.Errorf("unable to determine if %v is running: %v", name, err)
+	}
+	if !isRunning {
+		return fmt.Errorf("%v is not running", name)
+	}
+
+	proc, err := proc(name)
+	if err != nil {
+		return err
+	}
+	if err = proc.Kill(); err != nil {
+		return err
+	}
+	if err = os.Remove(pidFileName(name)); err != nil {
+		return fmt.Errorf("Unable to remove pid file:", err)
+	}
+	return nil
+}
+
+func ListRunning() {
+
+}
+
+func StopAll() {
+
+}
+
+func Start(name string) error {
+	isRunning, err := IsRunning(name)
+	if err != nil {
+		return fmt.Errorf("unable to determine if %v is running: %v", name, err)
+	}
+	if isRunning {
+		return fmt.Errorf("%v is already running", name)
+	}
+
 	var stdout io.Reader
 	var stderr io.Reader
-	var err error
 
 	command := os.Args[0]
 	args := os.Args[1:]
 	cmd := exec.Command(command, args...)
-	cmd.Env = append(os.Environ(), fmt.Sprintf("%v=%v", childKey, 1))
+	cmd.Env = append(os.Environ(), fmt.Sprintf("%v=%v", childEnv, 1))
 
 	if stdout, err = cmd.StdoutPipe(); err != nil {
 		panic(err)
