@@ -108,12 +108,32 @@ func Stop(name string) error {
 	return nil
 }
 
-func ListRunning() {
+func ListRunning() []string {
+	names := []string{}
 
+	pidfiles, _ := filepath.Glob(filepath.Join(config.ConfigDir(), "*.pid"))
+	for _, pidfile := range pidfiles {
+		_, pidfile = filepath.Split(pidfile)
+		name := strings.TrimSuffix(pidfile, ".pid")
+
+		isRunning, err := IsRunning(name)
+		if err == nil && isRunning {
+			names = append(names, name)
+		}
+	}
+
+	return names
 }
 
-func StopAll() {
+func StopAll() error {
+	for _, name := range ListRunning() {
+		err := Stop(name)
+		if err != nil {
+			return err
+		}
+	}
 
+	return nil
 }
 
 func Start(name string) error {

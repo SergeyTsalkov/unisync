@@ -21,12 +21,37 @@ var mca *minica.MiniCA
 func main() {
 	startFlag := flag.Bool("start", false, "start in background mode")
 	stopFlag := flag.Bool("stop", false, "stop in background mode")
+	stopAllFlag := flag.Bool("stopall", false, "stop all background instances")
+	statusFlag := flag.Bool("status", false, "list instances running in background mode")
+
 	debugFlag := flag.Bool("debug", false, "debug mode")
 	stdServerFlag := flag.Bool("stdserver", false, "run server that uses stdin/stdout (internal use only)")
 	serverFlag := flag.String("server", "", "run server")
 	flag.Parse()
 	args := flag.Args()
 	var conf *config.Config
+
+	if *statusFlag {
+		running := background.ListRunning()
+
+		if len(running) == 0 {
+			fmt.Println("There are no background instances running.")
+		} else {
+			fmt.Println("Background instances running:")
+			for _, name := range running {
+				fmt.Println(name)
+			}
+		}
+
+		os.Exit(0)
+	}
+	if *stopAllFlag {
+		err := background.StopAll()
+		if err != nil {
+			log.Fatalln(err)
+		}
+		os.Exit(0)
+	}
 
 	if len(args) == 1 {
 		var err error
