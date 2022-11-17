@@ -217,7 +217,9 @@ func (c *Config) Validate() error {
 	}
 
 	if len(c.RemoteUnisyncPath) == 0 {
-		c.RemoteUnisyncPath = []string{"unisync", "./unisync", ".unisync/unisync"}
+		// .unisync/unisync and ~/.unisync/unisync are not the same
+		// initial remote dir on connect is not guaranteed to be $HOME
+		c.RemoteUnisyncPath = []string{"unisync", "./unisync", ".unisync/unisync", "~/.unisync/unisync"}
 	}
 
 	return nil
