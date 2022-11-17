@@ -120,7 +120,9 @@ func (s *Server) handleDEL(cmd commands.Command) error {
 	del := cmd.(*commands.Del)
 
 	for _, path := range del.Paths {
-		err := os.Remove(s.Path(path))
+		// os.Remove() is not good enough because there could be a folder with ignored files in it
+		// those files won't get removed before we try to remove the folder itself
+		err := os.RemoveAll(s.Path(path))
 		if err != nil {
 			return err
 		}

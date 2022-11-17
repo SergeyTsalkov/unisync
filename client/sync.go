@@ -63,7 +63,10 @@ func (c *Client) RunSyncPlan(syncplan *filelist.SyncPlan) error {
 	var err error
 	for _, file := range syncplan.LocalDel {
 		log.Printf("%v %v %v", "<-", "DEL", file.Path)
-		err = os.Remove(c.Path(file.Path))
+
+		// os.Remove() is not good enough because there could be a folder with ignored files in it
+		// those files won't get removed before we try to remove the folder itself
+		err = os.RemoveAll(c.Path(file.Path))
 		if err != nil {
 			return err
 		}
