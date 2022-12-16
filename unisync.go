@@ -9,7 +9,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"unisync/background"
 	"unisync/config"
 	"unisync/log"
@@ -59,29 +58,11 @@ func main() {
 		if err != nil {
 			log.Fatalln(err)
 		}
-	} else if len(args) == 2 {
-		userhost, remotepath, valid := strings.Cut(args[1], ":")
-		if !valid {
-			showHelp()
-		}
-
-		user, host, valid := strings.Cut(userhost, "@")
-		if !valid {
-			showHelp()
-		}
-
-		conf = config.New("")
-		conf.Local = args[0]
-		conf.Remote = remotepath
-		conf.User = user
-		conf.Host = host
-		err := conf.Validate()
-		if err != nil {
-			log.Fatalln(err)
-		}
+	} else {
+		showHelp()
 	}
 
-	if conf != nil && conf.Name != "" && background.IsChild() {
+	if background.IsChild() {
 		err := background.WritePid(conf.Name)
 		if err != nil {
 			log.Warnln("Error writing pid file:", err)
@@ -100,14 +81,14 @@ func main() {
 			log.Fatalln(err)
 		}
 
-	} else if *startFlag && conf.Name != "" && !background.IsChild() {
+	} else if *startFlag && !background.IsChild() {
 		err := background.Start(conf.Name)
 		if err != nil {
 			log.Fatalln(err)
 		}
 		os.Exit(0)
 
-	} else if *stopFlag && conf.Name != "" && !background.IsChild() {
+	} else if *stopFlag && !background.IsChild() {
 		err := background.Stop(conf.Name)
 		if err != nil {
 			log.Fatalln(err)
@@ -115,9 +96,6 @@ func main() {
 		os.Exit(0)
 
 	} else {
-		if conf == nil {
-			showHelp()
-		}
 
 		if *debugFlag {
 			conf.Debug = true
