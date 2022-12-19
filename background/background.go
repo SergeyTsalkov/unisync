@@ -151,6 +151,7 @@ func Start(name string) error {
 	command := os.Args[0]
 	args := os.Args[1:]
 	cmd := exec.Command(command, args...)
+	cmd.SysProcAttr = procAttr
 	cmd.Env = append(os.Environ(), fmt.Sprintf("%v=%v", childEnv, 1))
 
 	if stdout, err = cmd.StdoutPipe(); err != nil {
