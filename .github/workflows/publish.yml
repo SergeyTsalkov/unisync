@@ -1,9 +1,8 @@
 name: Publish
 
 on:
-  push:
-    tags:
-      - '*'
+  release:
+    types: [created,edited]
 
 jobs:
   publish:
@@ -21,6 +20,12 @@ jobs:
           - os: macos-latest
             artifact_name: unisync
             asset_name: unisync-macos-amd64
+          - os: ubuntu-latest
+            artifact_name: unisync
+            asset_name: unisync-openbsd-amd64
+            env:
+              GOOS: openbsd
+              GOARCH: amd64
 
     steps:
     - uses: actions/checkout@v3
@@ -34,5 +39,4 @@ jobs:
       with:
         file: ${{ matrix.artifact_name }}
         asset_name: ${{ matrix.asset_name }}
-        tag: ${{ github.ref }}
         overwrite: true
