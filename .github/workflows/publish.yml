@@ -33,6 +33,12 @@ jobs:
             asset_name: unisync-openbsd-amd64
             goos: openbsd
             goarch: amd64
+          - os: ubuntu-latest
+            name: freebsd
+            artifact_name: unisync
+            asset_name: unisync-freebsd-amd64
+            goos: freebsd
+            goarch: amd64
 
     steps:
     - uses: actions/checkout@v3
