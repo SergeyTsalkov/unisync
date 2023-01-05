@@ -51,6 +51,20 @@ func main() {
 		}
 		os.Exit(0)
 	}
+	if *stdServerFlag {
+		err := runStdinServer()
+		if err != nil {
+			log.Fatalln(err)
+		}
+		os.Exit(0)
+	}
+	if *serverFlag != "" {
+		err := runDirectServer(*serverFlag)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		os.Exit(0)
+	}
 
 	if len(args) == 1 {
 		var err error
@@ -69,19 +83,7 @@ func main() {
 		}
 	}
 
-	if *stdServerFlag {
-		err := runStdinServer()
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-	} else if *serverFlag != "" {
-		err := runDirectServer(*serverFlag)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-	} else if *startFlag && !background.IsChild() {
+	if *startFlag && !background.IsChild() {
 		err := background.Start(conf.Name)
 		if err != nil {
 			log.Fatalln(err)
