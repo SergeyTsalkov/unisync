@@ -8,7 +8,8 @@ import (
 func showHelp() {
 	help :=
 		`
-unisync -- a continuous remote sync tool for programmers
+unisync -- the programmer's continuous sync tool
+see documentation at https://unisync.sh
 
 USAGE:
   unisync myserver
