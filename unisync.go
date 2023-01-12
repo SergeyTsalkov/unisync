@@ -9,10 +9,12 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"unisync/background"
 	"unisync/config"
 	"unisync/log"
 	"unisync/minica"
+	"unisync/watcher"
 )
 
 var mca *minica.MiniCA
@@ -23,12 +25,19 @@ func main() {
 	stopAllFlag := flag.Bool("stopall", false, "stop all background instances")
 	statusFlag := flag.Bool("status", false, "list instances running in background mode")
 
+	versionFlag := flag.Bool("version", false, "show version and exit")
 	debugFlag := flag.Bool("debug", false, "debug mode")
 	stdServerFlag := flag.Bool("stdserver", false, "run server that uses stdin/stdout (internal use only)")
 	serverFlag := flag.String("server", "", "run server")
 	flag.Parse()
 	args := flag.Args()
 	var conf *config.Config
+
+	if *versionFlag {
+		fmt.Println("git revision:", gitRevision())
+		fmt.Println("watcher:", watcher.Strategy)
+		os.Exit(0)
+	}
 
 	if *statusFlag {
 		running := background.ListRunning()
@@ -140,4 +149,16 @@ func getCert(canMake bool) ([]tls.Certificate, *x509.CertPool, error) {
 	}
 
 	return cert, mca.GetCAPool(), nil
+}
+
+func gitRevision() string {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				return setting.Value
+			}
+		}
+	}
+
+	return ""
 }

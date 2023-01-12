@@ -7,3 +7,4 @@ import "github.com/rjeczalik/notify"
 
 // FSEventsChangeOwner includes CHMOD changes for some reason
 var events notify.Event = notify.All | notify.FSEventsChangeOwner
+var Strategy = "fsevents (macos)"

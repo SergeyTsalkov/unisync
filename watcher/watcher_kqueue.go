@@ -6,3 +6,4 @@ package watcher
 import "github.com/rjeczalik/notify"
 
 var events notify.Event = notify.All | notify.NoteAttrib
+var Strategy = "kqueue (bsd)"
