@@ -33,6 +33,7 @@ type Config struct {
 	SshPath        string        `json:"-" ini:"ssh_path"`
 	SshOpts        string        `json:"-" ini:"ssh_opts"`
 	SshKeys        []string      `json:"-" ini:"ssh_key"`
+	TlsKey         string        `json:"-" ini:"tls_key"`
 	Timeout        time.Duration `json:"-" ini:"timeout"`
 	ConnectTimeout time.Duration `json:"-" ini:"connect_timeout"`
 	Log            string        `json:"-" ini:"log"`
@@ -61,6 +62,7 @@ func New(name string) *Config {
 		Name:           name,
 		SshPath:        "ssh",
 		SshOpts:        "-e none -o BatchMode=yes -o StrictHostKeyChecking=no",
+		TlsKey:         "secure.key",
 		Prefer:         "newest",
 		WatchLocal:     "1",
 		WatchRemote:    "1",

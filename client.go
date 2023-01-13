@@ -41,7 +41,11 @@ func _runClient(conf *config.Config) (bool, error) {
 	var out io.Writer
 	var err error
 
-	log.Printf("Connecting to %v@%v (%v)", conf.User, conf.Host, conf.Method)
+	if conf.Method == "directtls" {
+		log.Printf("Connecting to %v:%v (%v)", conf.Host, conf.Port, conf.Method)
+	} else {
+		log.Printf("Connecting to %v@%v (%v)", conf.User, conf.Host, conf.Method)
+	}
 
 	if conf.Method == "internalssh" {
 		sshclient, err := internalssh.New(conf)
@@ -71,7 +75,7 @@ func _runClient(conf *config.Config) (bool, error) {
 
 	} else if conf.Method == "directtls" {
 
-		cert, capool, err := getCert(false)
+		cert, capool, err := getCert(conf.TlsKey, false)
 		if err != nil {
 			return false, err
 		}

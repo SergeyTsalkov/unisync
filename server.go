@@ -19,7 +19,7 @@ func runStdinServer() error {
 }
 
 func runDirectServer(addr string) error {
-	cert, capool, err := getCert(true)
+	cert, capool, err := getCert("secure.key", true)
 	if err != nil {
 		return err
 	}

@@ -110,7 +110,13 @@ func (c *Client) RunHello() error {
 
 	whatsup := cmd.(*commands.Whatsup)
 	c.remoteBasepath = whatsup.Basepath
-	log.Printf("Syncing: %v <-> %v@%v:%v", c.GetBasepath(), c.Config.User, c.Config.Host, c.remoteBasepath)
+
+	if c.Config.Method == "directtls" {
+		log.Printf("Syncing: %v <-> %v:%v", c.GetBasepath(), c.Config.Host, c.remoteBasepath)
+	} else {
+		log.Printf("Syncing: %v <-> %v@%v:%v", c.GetBasepath(), c.Config.User, c.Config.Host, c.remoteBasepath)
+	}
+
 	return nil
 }
 

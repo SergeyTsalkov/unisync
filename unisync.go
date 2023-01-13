@@ -125,21 +125,25 @@ func main() {
 	}
 }
 
-func getCert(canMake bool) ([]tls.Certificate, *x509.CertPool, error) {
+func getCert(keyPath string, canMake bool) ([]tls.Certificate, *x509.CertPool, error) {
 	if mca == nil {
 		var err error
-		fullpath := filepath.Join(config.ConfigDir(), "secure.key")
-		mca, err = minica.Load(fullpath)
+
+		if !filepath.IsAbs(keyPath) {
+			keyPath = filepath.Join(config.ConfigDir(), keyPath)
+		}
+
+		mca, err = minica.Load(keyPath)
 
 		if err != nil && canMake && errors.Is(err, fs.ErrNotExist) {
-			mca, err = minica.New(fullpath)
+			mca, err = minica.New(keyPath)
 			if err != nil {
-				return nil, nil, fmt.Errorf("Failed to create key at %v: %w", fullpath, err)
+				return nil, nil, fmt.Errorf("Failed to create key at %v: %w", keyPath, err)
 			}
 
-			log.Printf("Created new key at %v, make sure to copy this to the client so it can connect!", fullpath)
+			log.Printf("Created new key at %v, make sure to copy this to the client so it can connect!", keyPath)
 		} else if err != nil {
-			return nil, nil, fmt.Errorf("Failed to load key at %v: %w", fullpath, err)
+			return nil, nil, fmt.Errorf("Failed to load key at %v: %w", keyPath, err)
 		}
 	}
 
