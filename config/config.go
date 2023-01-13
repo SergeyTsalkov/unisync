@@ -239,19 +239,28 @@ func validateInArray(name, value string, options []string) error {
 
 func ConfigDir() string {
 	once.Do(func() {
-		var err error
-
-		configDir, err = ResolvePath("~/.unisync")
-		if err != nil {
-			log.Fatalf("ConfigDir error: %v", err)
-		}
-
-		err = mkdirIfMissing(configDir, 0700)
-		if err != nil {
-			log.Fatalf("Unable to create ConfigDir %v: %v", configDir, err)
-		}
+		configDir = determineConfigDir()
 	})
 
+	return configDir
+}
+
+func determineConfigDir() string {
+	var configDir string
+	configDir = os.Getenv("UNISYNC_DIR")
+	if configDir != "" {
+		if !IsDir(configDir) {
+			log.Fatalf("UNISYNC_DIR directory does not exist: %v", configDir)
+		}
+
+		return configDir
+	}
+
+	configDir = filepath.Join(HomeDir(), ".unisync")
+	err := mkdirIfMissing(configDir, 0700)
+	if err != nil {
+		log.Fatalf("Unable to create ConfigDir %v: %v", configDir, err)
+	}
 	return configDir
 }
 
